@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
-import { Plan, Option, Campaign } from '../types'
 import PlanManager from './admin/PlanManager'
 import OptionManager from './admin/OptionManager'
 import CampaignManager from './admin/CampaignManager'
@@ -11,7 +9,7 @@ type Tab = 'plans' | 'options' | 'campaigns'
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('plans')
-  const [shopId, setShopId] = useState<number>(1)
+  const shopId = 1 // TODO: Get from user profile or context
 
   const handleSignOut = async () => {
     await signOut()
