@@ -18,15 +18,17 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-ivory-500">
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-navy-600 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">管理画面</h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user?.email}</span>
-              <button onClick={handleSignOut} className="btn-secondary text-sm">
+            <h1 className="text-3xl font-bold text-white font-yugothic" style={{ letterSpacing: '0.1em' }}>
+              管理画面
+            </h1>
+            <div className="flex items-center gap-6">
+              <span className="text-sm text-ivory-200 font-semibold">{user?.email}</span>
+              <button onClick={handleSignOut} className="bg-white text-navy-600 px-6 py-2 rounded-md-japanese font-semibold hover:bg-ivory-100 transition-colors">
                 ログアウト
               </button>
             </div>
@@ -35,36 +37,39 @@ export default function AdminDashboard() {
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b-2 border-navy-200 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('plans')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
                 activeTab === 'plans'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-navy-600 text-navy-600'
+                  : 'border-transparent text-navy-400 hover:text-navy-600 hover:border-navy-300'
               }`}
+              style={{ letterSpacing: '0.05em' }}
             >
               プラン管理
             </button>
             <button
               onClick={() => setActiveTab('options')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
                 activeTab === 'options'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-navy-600 text-navy-600'
+                  : 'border-transparent text-navy-400 hover:text-navy-600 hover:border-navy-300'
               }`}
+              style={{ letterSpacing: '0.05em' }}
             >
               オプション管理
             </button>
             <button
               onClick={() => setActiveTab('campaigns')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
                 activeTab === 'campaigns'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-navy-600 text-navy-600'
+                  : 'border-transparent text-navy-400 hover:text-navy-600 hover:border-navy-300'
               }`}
+              style={{ letterSpacing: '0.05em' }}
             >
               キャンペーン管理
             </button>

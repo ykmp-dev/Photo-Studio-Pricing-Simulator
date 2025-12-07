@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Noto Sans JP', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: "Yu Gothic", "YuGothic", "游ゴシック", system-ui, sans-serif;
+  line-height: 1.75;
   font-weight: 400;
 
   color-scheme: light;
-  color: rgba(0, 0, 0, 0.87);
-  background-color: #ffffff;
+  color: #1a237e; /* 濃紺 */
+  background-color: #f7f0df; /* アイボリー */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,22 +21,101 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f7f0df; /* アイボリー背景 */
+}
+
+/* 和柄背景パターン */
+.japanese-pattern-bg {
+  position: relative;
+}
+
+.japanese-pattern-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 400px;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(26, 35, 126, 0.02) 10px,
+      rgba(26, 35, 126, 0.02) 20px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.japanese-pattern-bg::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 300px;
+  height: 300px;
+  background-image:
+    radial-gradient(circle, rgba(26, 35, 126, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 @layer components {
+  /* ボタンスタイル：濃紺塗りつぶし、白テキスト、角丸少なめ */
   .btn-primary {
-    @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-navy-600 text-white px-8 py-3 rounded-md-japanese font-semibold
+           hover:bg-navy-700 transition-all duration-300
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-md hover:shadow-lg;
+    letter-spacing: 0.05em;
   }
 
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors duration-200;
+    @apply bg-ivory-600 text-navy-600 px-8 py-3 rounded-md-japanese font-semibold
+           hover:bg-ivory-700 border-2 border-navy-600
+           transition-all duration-300 shadow-sm hover:shadow-md;
+    letter-spacing: 0.05em;
   }
 
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-3 border-2 border-navy-200 rounded-md-japanese
+           focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-navy-600
+           bg-white transition-all duration-200;
   }
 
+  /* カードスタイル：アイボリー背景、上質な影 */
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-ivory-100 rounded-md-japanese shadow-lg p-6 border border-navy-100;
+  }
+
+  .card-white {
+    @apply bg-white rounded-md-japanese shadow-md p-6 border border-ivory-400;
+  }
+
+  /* セクション見出し */
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold text-navy-600 mb-6 font-yugothic;
+    letter-spacing: 0.1em;
+  }
+
+  .section-subtitle {
+    @apply text-xl md:text-2xl font-semibold text-navy-500 mb-4 font-yugothic;
+    letter-spacing: 0.08em;
+  }
+
+  /* 英字用 Serif フォント */
+  .text-serif {
+    @apply font-serif;
+  }
+
+  /* 和のアクセント線 */
+  .accent-line {
+    @apply w-16 h-1 bg-navy-600 mx-auto mb-6;
+  }
+
+  .accent-line-left {
+    @apply w-16 h-1 bg-navy-600 mb-4;
   }
 }

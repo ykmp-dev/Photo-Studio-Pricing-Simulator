@@ -76,10 +76,10 @@ export default function SimulatorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-ivory-500">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-navy-600 border-t-transparent"></div>
+          <p className="mt-6 text-navy-600 text-lg font-semibold">読み込み中...</p>
         </div>
       </div>
     )
@@ -87,10 +87,10 @@ export default function SimulatorPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="card max-w-md">
-          <p className="text-red-600">{error}</p>
-          <button onClick={fetchData} className="btn-primary mt-4">
+      <div className="min-h-screen flex items-center justify-center bg-ivory-500">
+        <div className="card-white max-w-md text-center">
+          <p className="text-red-600 font-semibold mb-4">{error}</p>
+          <button onClick={fetchData} className="btn-primary">
             再試行
           </button>
         </div>
@@ -98,9 +98,5 @@ export default function SimulatorPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Simulator plans={plans} options={options} campaigns={campaigns} />
-    </div>
-  )
+  return <Simulator plans={plans} options={options} campaigns={campaigns} />
 }
