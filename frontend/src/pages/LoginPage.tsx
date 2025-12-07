@@ -31,17 +31,17 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         <div className="card-white shadow-2xl">
           <div className="text-center mb-8">
-            <h2 className="section-title text-navy-600">
+            <h2 className="section-title text-blue-600">
               管理画面ログイン
             </h2>
             <div className="accent-line"></div>
-            <p className="text-navy-500">店舗管理者専用</p>
+            <p className="text-gray-600">店舗管理者専用</p>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-navy-600 mb-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
                   メールアドレス
                 </label>
                 <input
@@ -57,7 +57,7 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-navy-600 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
                   パスワード
                 </label>
                 <input

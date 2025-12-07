@@ -66,16 +66,22 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
   // Get active campaigns
   const activeCampaigns = campaigns.filter((c) => c.is_active)
 
+  // カラフルなカード枠線用の色をサイクル
+  const getCardClass = (index: number) => {
+    const classes = ['card-blue', 'card-pink', 'card-green']
+    return classes[index % classes.length]
+  }
+
   return (
     <div className="min-h-screen bg-ivory-500 japanese-pattern-bg">
       {/* Hero Section */}
-      <section className="relative py-16 md:py-24 bg-gradient-to-b from-ivory-300 to-ivory-500">
+      <section className="relative py-16 md:py-20 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h1 className="section-title text-navy-600 mb-4">
+          <h1 className="section-title mb-4">
             料金シミュレーター
           </h1>
           <div className="accent-line"></div>
-          <p className="text-lg md:text-xl text-navy-500 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
             撮影プランとオプションを選択して、<br className="hidden sm:inline" />
             お見積もり料金をご確認いただけます
           </p>
@@ -84,24 +90,24 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-12 bg-navy-600 relative overflow-hidden">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
-              開催中のキャンペーン
+        <section className="py-12 bg-ivory-500">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="section-subtitle text-center mb-8">
+              イベント・キャンペーン
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {activeCampaigns.map((campaign) => (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activeCampaigns.map((campaign, index) => (
                 <div
                   key={campaign.id}
-                  className="bg-white rounded-md-japanese p-6 shadow-lg border-2 border-ivory-500"
+                  className={`${getCardClass(index)} hover:shadow-xl transition-all duration-300`}
                 >
-                  <h3 className="text-xl font-bold text-navy-600 mb-2">
+                  <h3 className="text-lg font-bold text-navy-700 mb-3">
                     {campaign.name}
                   </h3>
-                  <p className="text-navy-500 mb-3">
+                  <p className="text-sm text-gray-600 mb-2">
                     期間: {campaign.start_date} 〜 {campaign.end_date}
                   </p>
-                  <p className="text-2xl font-bold text-navy-600">
+                  <p className="text-xl font-bold text-blue-600 mt-3">
                     {campaign.discount_type === 'percentage'
                       ? `${campaign.discount_value}% OFF`
                       : `${formatPrice(campaign.discount_value)} 引き`}
@@ -114,7 +120,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       )}
 
       {/* Main Content Section */}
-      <section className="py-12">
+      <section className="py-12 bg-ivory-500">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Category Selection */}
           {categories.length > 0 && (
@@ -128,10 +134,10 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
                       setSelectedCategory(category)
                       setSelectedPlan(null)
                     }}
-                    className={`px-8 py-4 rounded-md-japanese font-semibold transition-all duration-300 shadow-md ${
+                    className={`px-8 py-4 rounded-md-japanese font-semibold transition-all duration-300 ${
                       selectedCategory === category
-                        ? 'bg-navy-600 text-white shadow-lg scale-105'
-                        : 'bg-white text-navy-600 border-2 border-navy-300 hover:border-navy-600 hover:shadow-lg'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-white text-blue-500 border-2 border-blue-500 hover:bg-blue-50 shadow-md'
                     }`}
                   >
                     {category}
@@ -143,34 +149,35 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
           {/* Plan Selection */}
           <div className="mb-10">
-            <h2 className="section-subtitle text-center mb-6">撮影プラン</h2>
+            <h2 className="section-subtitle text-center mb-6">料金のご案内</h2>
             <div className="space-y-4">
-              {filteredPlans.map((plan) => (
+              {filteredPlans.map((plan, index) => (
                 <div
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan)}
-                  className={`card-white cursor-pointer transition-all duration-300 ${
+                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl ${
                     selectedPlan?.id === plan.id
-                      ? 'border-4 border-navy-600 shadow-xl scale-[1.02]'
-                      : 'border-2 border-ivory-600 hover:border-navy-400 hover:shadow-lg'
+                      ? getCardClass(index) + ' scale-[1.02]'
+                      : 'card'
                   }`}
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex-1">
-                      <h3 className="text-xl md:text-2xl font-bold text-navy-600 mb-2">
+                      <h3 className="text-xl md:text-2xl font-bold text-navy-700 mb-2">
                         {plan.name}
                       </h3>
                       {plan.description && (
-                        <p className="text-navy-500 leading-relaxed">
+                        <p className="text-gray-600 leading-relaxed">
                           {plan.description}
                         </p>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-navy-400 mb-1">基本料金</div>
-                      <p className="text-3xl md:text-4xl font-bold text-navy-600">
+                      <div className="text-sm text-gray-500 mb-1">料金</div>
+                      <p className="text-3xl md:text-4xl font-bold text-blue-600">
                         {formatPrice(plan.base_price)}
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">（税込）</p>
                     </div>
                   </div>
                 </div>
@@ -187,7 +194,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
                   ([category, categoryOptions]) =>
                     categoryOptions.length > 0 && (
                       <div key={category}>
-                        <h3 className="text-xl font-bold text-navy-600 mb-4 pb-2 border-b-2 border-navy-200">
+                        <h3 className="text-xl font-bold text-navy-700 mb-4 pb-2 border-b-2 border-blue-300">
                           {categoryLabels[category] || category}
                         </h3>
                         <div className="space-y-3">
@@ -196,31 +203,31 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
                             return (
                               <label
                                 key={option.id}
-                                className={`card-white cursor-pointer transition-all duration-300 flex items-start ${
+                                className={`cursor-pointer transition-all duration-300 flex items-start hover:shadow-lg ${
                                   isSelected
-                                    ? 'border-3 border-navy-600 bg-navy-50'
-                                    : 'border border-ivory-600 hover:border-navy-400 hover:shadow-md'
+                                    ? 'card-blue'
+                                    : 'card'
                                 }`}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleOptionToggle(option)}
-                                  className="w-6 h-6 text-navy-600 rounded-sm-japanese focus:ring-navy-500 mt-1"
+                                  className="w-6 h-6 text-blue-600 rounded-sm-japanese focus:ring-blue-500 mt-1"
                                 />
                                 <div className="ml-4 flex-1">
                                   <div className="flex justify-between items-start gap-4">
                                     <div className="flex-1">
-                                      <span className="font-bold text-lg text-navy-600 block mb-1">
+                                      <span className="font-bold text-lg text-navy-700 block mb-1">
                                         {option.name}
                                       </span>
                                       {option.description && (
-                                        <p className="text-sm text-navy-500">
+                                        <p className="text-sm text-gray-600">
                                           {option.description}
                                         </p>
                                       )}
                                     </div>
-                                    <span className="text-2xl font-bold text-navy-600 whitespace-nowrap">
+                                    <span className="text-2xl font-bold text-blue-600 whitespace-nowrap">
                                       {formatPrice(option.price)}
                                     </span>
                                   </div>
@@ -240,10 +247,10 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Price Summary - Sticky */}
       {selectedPlan && (
-        <div className="sticky bottom-0 bg-ivory-200 border-t-4 border-navy-600 shadow-2xl z-50">
+        <div className="sticky bottom-0 bg-white border-t-4 border-blue-500 shadow-2xl z-50">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-white rounded-md-japanese p-6 md:p-8 shadow-xl border-2 border-navy-200">
-              <h2 className="text-2xl md:text-3xl font-bold text-navy-600 mb-6 text-center">
+            <div className="bg-ivory-100 rounded-md-japanese p-6 md:p-8 border-2 border-gray-200">
+              <h2 className="text-2xl md:text-3xl font-bold text-navy-700 mb-6 text-center">
                 お見積もり
               </h2>
 
@@ -256,26 +263,26 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
               )}
 
               <div className="space-y-3 mb-6 text-lg">
-                <div className="flex justify-between text-navy-600 pb-2 border-b border-ivory-400">
+                <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
                   <span>小計</span>
                   <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
                 </div>
                 {priceCalculation.discount > 0 && (
-                  <div className="flex justify-between text-red-600 font-semibold pb-2 border-b border-ivory-400">
+                  <div className="flex justify-between text-red-600 font-semibold pb-2 border-b border-gray-300">
                     <span>割引</span>
                     <span>-{formatPrice(priceCalculation.discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-navy-600 pb-2 border-b border-ivory-400">
+                <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
                   <span>消費税（10%）</span>
                   <span className="font-semibold">{formatPrice(priceCalculation.tax)}</span>
                 </div>
               </div>
 
-              <div className="pt-6 border-t-2 border-navy-600 mb-6">
+              <div className="pt-6 border-t-2 border-blue-500 mb-6">
                 <div className="flex justify-between items-center">
-                  <span className="text-2xl md:text-3xl font-bold text-navy-600">合計金額</span>
-                  <span className="text-4xl md:text-5xl font-bold text-navy-600">
+                  <span className="text-2xl md:text-3xl font-bold text-navy-700">合計金額</span>
+                  <span className="text-4xl md:text-5xl font-bold text-blue-600">
                     {formatPrice(priceCalculation.total)}
                   </span>
                 </div>
