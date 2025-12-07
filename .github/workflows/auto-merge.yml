@@ -36,13 +36,7 @@ jobs:
             echo "Creating new PR..."
             PR_URL=$(gh pr create \
               --title "Auto-merge: $BRANCH_NAME" \
-              --body "このPRは自動的に作成・マージされます。
-
-## 変更内容
-Claudeセッション \`$BRANCH_NAME\` からの変更を自動的にマージします。
-
-## デプロイ
-マージ後、GitHub Pagesに自動デプロイされます。" \
+              --body "このPRは自動的に作成・マージされます。Claudeセッション ${BRANCH_NAME} からの変更を自動的にマージします。マージ後、GitHub Pagesに自動デプロイされます。" \
               --base main \
               --head "$BRANCH_NAME")
 
