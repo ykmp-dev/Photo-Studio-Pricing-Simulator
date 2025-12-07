@@ -5,9 +5,12 @@ import LoginPage from './pages/LoginPage'
 import { AuthProvider } from './contexts/AuthContext'
 
 function App() {
+  // GitHub Pages用のbaseパス設定
+  const basename = import.meta.env.PROD ? '/Photo-Studio-Pricing-Simulator' : ''
+
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={basename}>
         <Routes>
           <Route path="/" element={<SimulatorPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
