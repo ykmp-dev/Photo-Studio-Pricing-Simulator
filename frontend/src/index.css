@@ -97,21 +97,24 @@ body {
 
   /* カラフルな枠線のカード */
   .card-blue {
-    @apply bg-white rounded-md-japanese shadow-md p-6 border-3;
+    @apply bg-white rounded-md-japanese shadow-md p-6;
     border-color: #4a90e2;
     border-width: 3px;
+    border-style: solid;
   }
 
   .card-pink {
-    @apply bg-white rounded-md-japanese shadow-md p-6 border-3;
+    @apply bg-white rounded-md-japanese shadow-md p-6;
     border-color: #ff6b9d;
     border-width: 3px;
+    border-style: solid;
   }
 
   .card-green {
-    @apply bg-white rounded-md-japanese shadow-md p-6 border-3;
+    @apply bg-white rounded-md-japanese shadow-md p-6;
     border-color: #4caf50;
     border-width: 3px;
+    border-style: solid;
   }
 
   /* セクション見出し */
