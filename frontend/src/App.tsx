@@ -5,8 +5,8 @@ import LoginPage from './pages/LoginPage'
 import { AuthProvider } from './contexts/AuthContext'
 
 function App() {
-  // GitHub Pages用のbaseパス設定
-  const basename = import.meta.env.PROD ? '/Photo-Studio-Pricing-Simulator' : ''
+  // GitHub Pages用のbaseパス設定（vite.config.tsと一致させる）
+  const basename = import.meta.env.PROD ? '/Photo-Studio-Pricing-Simulator/' : '/'
 
   return (
     <AuthProvider>
