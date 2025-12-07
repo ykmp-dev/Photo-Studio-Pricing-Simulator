@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 
 export default function SimulatorPage() {
   const [searchParams] = useSearchParams()
-  const shopId = searchParams.get('shop') || import.meta.env.VITE_DEFAULT_SHOP_ID || '1'
+  const shopId = searchParams.get('shop') || import.meta.env.VITE_SHOP_ID || '1'
 
   const [plans, setPlans] = useState<Plan[]>([])
   const [options, setOptions] = useState<Option[]>([])
@@ -78,8 +78,8 @@ export default function SimulatorPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ivory-500">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-navy-600 border-t-transparent"></div>
-          <p className="mt-6 text-navy-600 text-lg font-semibold">読み込み中...</p>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-6 text-blue-600 text-lg font-semibold">読み込み中...</p>
         </div>
       </div>
     )

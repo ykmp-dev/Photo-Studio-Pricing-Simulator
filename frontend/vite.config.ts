@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  base: process.env.NODE_ENV === 'production'
+    ? '/Photo-Studio-Pricing-Simulator/'
+    : '/',
   server: {
     port: 3000,
     proxy: {
@@ -11,5 +14,9 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false
   }
 })
