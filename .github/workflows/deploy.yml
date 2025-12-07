@@ -40,6 +40,8 @@ jobs:
         run: |
           cd frontend
           npm run build
+          # GitHub PagesでJekyllを無効化
+          touch dist/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
