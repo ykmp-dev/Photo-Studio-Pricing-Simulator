@@ -44,8 +44,8 @@ jobs:
             echo "Created PR #$PR_NUMBER"
           fi
 
-          # PRを自動マージ
-          echo "Auto-merging PR #$PR_NUMBER..."
-          gh pr merge $PR_NUMBER --merge --auto
+          # PRを即座にマージ
+          echo "Merging PR #$PR_NUMBER..."
+          gh pr merge $PR_NUMBER --merge --delete-branch
 
-          echo "✅ PR created and queued for auto-merge!"
+          echo "✅ PR merged successfully!"
