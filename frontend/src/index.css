@@ -142,3 +142,69 @@ body {
     @apply w-16 h-1 bg-blue-500 mb-4;
   }
 }
+
+/* ナビゲーションリンク */
+.nav-link {
+  @apply text-sm text-gray-700 hover:text-blue-600 transition-colors duration-200 font-semibold;
+  letter-spacing: 0.05em;
+}
+
+/* 菱形アイコン */
+.diamond-icon {
+  width: 20px;
+  height: 20px;
+  background-color: #4a6fa5;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+/* bg03和柄パターン（セクション用） */
+.bg03-pattern {
+  background-color: #f5f1e8;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(74, 111, 165, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 85% 60%, rgba(74, 111, 165, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(74, 111, 165, 0.03) 0%, transparent 35%);
+  position: relative;
+}
+
+.bg03-pattern::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-radial-gradient(circle at 20% 30%, transparent 0, transparent 8px, rgba(74, 111, 165, 0.02) 8px, transparent 10px),
+    repeating-radial-gradient(circle at 70% 70%, transparent 0, transparent 12px, rgba(74, 111, 165, 0.02) 12px, transparent 14px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* 薄い青背景セクション */
+.bg-light-blue {
+  background-color: #e8f4f8;
+}
+
+/* ボタンに矢印アイコン追加用 */
+.btn-with-arrow {
+  @apply flex items-center justify-center;
+}
+
+.btn-with-arrow::after {
+  content: '→';
+  margin-left: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.btn-with-arrow:hover::after {
+  transform: translateX(4px);
+}
+
+/* ホバーエフェクト強化 */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
