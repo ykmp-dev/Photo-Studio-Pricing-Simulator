@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Plan, Option, Campaign } from '../types'
 import { calculatePrice, formatPrice } from '../utils/priceCalculator'
+import Header from './Header'
+import Footer from './Footer'
 
 interface SimulatorProps {
   plans: Plan[]
@@ -73,26 +75,29 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
   }
 
   return (
-    <div className="min-h-screen bg-ivory-500 japanese-pattern-bg">
+    <div className="min-h-screen bg-ivory-500">
+      <Header />
+
       {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h1 className="section-title mb-4">
-            料金シミュレーター
+          <div className="diamond-icon mx-auto mb-6"></div>
+          <h1 className="section-title text-gray-800 mb-4">
+            WEB仮予約フォーム
           </h1>
           <div className="accent-line"></div>
           <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-            撮影プランとオプションを選択して、<br className="hidden sm:inline" />
-            お見積もり料金をご確認いただけます
+            ご希望の撮影メニューをお選びください。
           </p>
         </div>
       </section>
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-12 bg-ivory-500">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="section-subtitle text-center mb-8">
+        <section className="py-12 bg03-pattern">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="diamond-icon mx-auto mb-6"></div>
+            <h2 className="section-subtitle text-center text-gray-800 mb-8">
               イベント・キャンペーン
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -120,12 +125,13 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       )}
 
       {/* Main Content Section */}
-      <section className="py-12 bg-ivory-500">
+      <section className="py-12 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Category Selection */}
           {categories.length > 0 && (
             <div className="mb-10">
-              <h2 className="section-subtitle text-center mb-6">撮影メニュー</h2>
+              <div className="diamond-icon mx-auto mb-6"></div>
+              <h2 className="section-subtitle text-center text-gray-800 mb-6">撮影メニュー</h2>
               <div className="flex flex-wrap justify-center gap-4">
                 {categories.map((category) => (
                   <button
