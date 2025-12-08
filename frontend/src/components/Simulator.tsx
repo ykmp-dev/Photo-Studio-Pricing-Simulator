@@ -79,14 +79,14 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       <Header />
 
       {/* Hero Section */}
-      <section className="relative py-16 md:py-20 bg-white">
+      <section className="relative py-8 md:py-12 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <div className="diamond-icon mx-auto mb-6"></div>
-          <h1 className="section-title text-gray-800 mb-4">
+          <div className="diamond-icon mx-auto mb-4"></div>
+          <h1 className="section-title text-gray-800 mb-3">
             WEB仮予約フォーム
           </h1>
           <div className="accent-line"></div>
-          <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
             ご希望の撮影メニューをお選びください。
           </p>
         </div>
@@ -94,10 +94,10 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-12 bg03-pattern">
+        <section className="py-6 bg03-pattern">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="diamond-icon mx-auto mb-6"></div>
-            <h2 className="section-subtitle text-center text-gray-800 mb-8">
+            <div className="diamond-icon mx-auto mb-4"></div>
+            <h2 className="section-subtitle text-center text-gray-800 mb-4">
               イベント・キャンペーン
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -125,13 +125,13 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       )}
 
       {/* Main Content Section */}
-      <section className="py-12 bg-white">
+      <section className="py-6 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Category Selection */}
           {categories.length > 0 && (
-            <div className="mb-10">
-              <div className="diamond-icon mx-auto mb-6"></div>
-              <h2 className="section-subtitle text-center text-gray-800 mb-6">撮影メニュー</h2>
+            <div className="mb-6">
+              <div className="diamond-icon mx-auto mb-4"></div>
+              <h2 className="section-subtitle text-center text-gray-800 mb-4">撮影メニュー</h2>
               <div className="flex flex-wrap justify-center gap-4">
                 {categories.map((category) => (
                   <button
@@ -154,8 +154,8 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
           )}
 
           {/* Plan Selection */}
-          <div className="mb-10">
-            <h2 className="section-subtitle text-center mb-6">料金のご案内</h2>
+          <div className="mb-6">
+            <h2 className="section-subtitle text-center mb-4">料金のご案内</h2>
             <div className="space-y-4">
               {filteredPlans.map((plan, index) => (
                 <div
@@ -193,9 +193,9 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
           {/* Options Selection */}
           {selectedPlan && (
-            <div className="mb-10">
-              <h2 className="section-subtitle text-center mb-6">オプション</h2>
-              <div className="space-y-8">
+            <div className="mb-6">
+              <h2 className="section-subtitle text-center mb-4">オプション</h2>
+              <div className="space-y-4">
                 {Object.entries(groupedOptions).map(
                   ([category, categoryOptions]) =>
                     categoryOptions.length > 0 && (
@@ -254,51 +254,51 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       {/* Price Summary - Sticky */}
       {selectedPlan && (
         <div className="sticky bottom-0 bg-white border-t-4 border-blue-500 shadow-2xl z-50">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-ivory-100 rounded-md-japanese p-6 md:p-8 border-2 border-gray-200">
-              <h2 className="text-2xl md:text-3xl font-bold text-navy-700 mb-6 text-center">
+          <div className="w-full md:max-w-md md:ml-auto px-3 sm:px-4 py-3">
+            <div className="bg-ivory-100 rounded-md-japanese p-4 border-2 border-gray-200">
+              <h2 className="text-xl md:text-2xl font-bold text-navy-700 mb-3 text-center">
                 お見積もり
               </h2>
 
               {priceCalculation.appliedCampaign && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-md-japanese">
-                  <p className="text-center font-bold text-orange-800">
+                <div className="mb-3 p-2 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-md-japanese">
+                  <p className="text-center text-sm font-bold text-orange-800">
                     ✨ キャンペーン適用中: {priceCalculation.appliedCampaign.name}
                   </p>
                 </div>
               )}
 
-              <div className="space-y-3 mb-6 text-lg">
-                <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
+              <div className="space-y-2 mb-3 text-sm md:text-base">
+                <div className="flex justify-between text-gray-700 pb-1 border-b border-gray-300">
                   <span>小計</span>
                   <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
                 </div>
                 {priceCalculation.discount > 0 && (
-                  <div className="flex justify-between text-red-600 font-semibold pb-2 border-b border-gray-300">
+                  <div className="flex justify-between text-red-600 font-semibold pb-1 border-b border-gray-300">
                     <span>割引</span>
                     <span>-{formatPrice(priceCalculation.discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
+                <div className="flex justify-between text-gray-700 pb-1 border-b border-gray-300">
                   <span>消費税（10%）</span>
                   <span className="font-semibold">{formatPrice(priceCalculation.tax)}</span>
                 </div>
               </div>
 
-              <div className="pt-6 border-t-2 border-blue-500 mb-6">
+              <div className="pt-3 border-t-2 border-blue-500 mb-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-2xl md:text-3xl font-bold text-navy-700">合計金額</span>
-                  <span className="text-4xl md:text-5xl font-bold text-blue-600">
+                  <span className="text-lg md:text-xl font-bold text-navy-700">合計金額</span>
+                  <span className="text-2xl md:text-3xl font-bold text-blue-600">
                     {formatPrice(priceCalculation.total)}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={handleReset} className="btn-secondary w-full">
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={handleReset} className="btn-secondary w-full text-sm md:text-base py-2">
                   リセット
                 </button>
-                <button className="btn-primary w-full">
+                <button className="btn-primary w-full text-sm md:text-base py-2">
                   予約はこちら
                 </button>
               </div>
