@@ -306,6 +306,8 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   )
 }
