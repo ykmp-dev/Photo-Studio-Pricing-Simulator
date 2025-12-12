@@ -1,17 +1,15 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import PlanManager from './admin/PlanManager'
-import OptionManager from './admin/OptionManager'
 import CampaignManager from './admin/CampaignManager'
 import CategoryManager from './admin/CategoryManager'
 import FormList from './admin/FormList'
 import FormBuilder from './admin/FormBuilder'
 
-type Tab = 'plans' | 'options' | 'campaigns' | 'categories' | 'forms'
+type Tab = 'categories' | 'campaigns' | 'forms'
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>('plans')
+  const [activeTab, setActiveTab] = useState<Tab>('categories')
   const [formBuilderView, setFormBuilderView] = useState<'list' | 'edit' | 'create'>('list')
   const [editingFormId, setEditingFormId] = useState<number | undefined>()
   const shopId = 1 // TODO: Get from user profile or context
@@ -59,26 +57,15 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             <button
-              onClick={() => setActiveTab('plans')}
+              onClick={() => setActiveTab('categories')}
               className={`py-4 px-2 border-b-4 font-semibold transition-all ${
-                activeTab === 'plans'
+                activeTab === 'categories'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
               }`}
               style={{ letterSpacing: '0.05em' }}
             >
-              プラン管理
-            </button>
-            <button
-              onClick={() => setActiveTab('options')}
-              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
-                activeTab === 'options'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
-              }`}
-              style={{ letterSpacing: '0.05em' }}
-            >
-              オプション管理
+              カテゴリ・アイテム管理
             </button>
             <button
               onClick={() => setActiveTab('campaigns')}
@@ -90,17 +77,6 @@ export default function AdminDashboard() {
               style={{ letterSpacing: '0.05em' }}
             >
               キャンペーン管理
-            </button>
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
-                activeTab === 'categories'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
-              }`}
-              style={{ letterSpacing: '0.05em' }}
-            >
-              カテゴリ管理
             </button>
             <button
               onClick={() => {
@@ -122,10 +98,8 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'plans' && <PlanManager shopId={shopId} />}
-        {activeTab === 'options' && <OptionManager shopId={shopId} />}
-        {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
         {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
+        {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
         {activeTab === 'forms' && (
           <>
             {formBuilderView === 'list' && (
