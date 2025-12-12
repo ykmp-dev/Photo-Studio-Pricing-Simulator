@@ -126,185 +126,113 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Main Content Section */}
       <section className="py-6 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:flex lg:gap-8">
-            {/* Left Column - Main Content */}
-            <div className="lg:flex-1 lg:max-w-3xl">
-              {/* Category Selection */}
-              {categories.length > 0 && (
-                <div className="mb-6">
-                  <div className="diamond-icon mx-auto mb-4"></div>
-                  <h2 className="section-subtitle text-center text-gray-800 mb-4">撮影メニュー</h2>
-              <div className="flex flex-wrap justify-center gap-4">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => {
-                      setSelectedCategory(category)
-                      setSelectedPlan(null)
-                    }}
-                    className={`px-8 py-4 rounded-md-japanese font-semibold transition-all duration-300 ${
-                      selectedCategory === category
-                        ? 'bg-blue-500 text-white shadow-lg'
-                        : 'bg-white text-blue-500 border-2 border-blue-500 hover:bg-blue-50 shadow-md'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Plan Selection */}
-          <div className="mb-6">
-            <h2 className="section-subtitle text-center mb-4">料金のご案内</h2>
-            <div className="space-y-4">
-              {filteredPlans.map((plan, index) => (
-                <div
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan)}
-                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl ${
-                    selectedPlan?.id === plan.id
-                      ? getCardClass(index) + ' scale-[1.02]'
-                      : 'card'
-                  }`}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {/* Category Selection */}
+            {categories.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-base font-semibold text-gray-800 mb-2">
+                  撮影メニューをお選びください
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value)
+                    setSelectedPlan(null)
+                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
                 >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl md:text-2xl font-bold text-navy-700 mb-2">
-                        {plan.name}
-                      </h3>
-                      {plan.description && (
-                        <p className="text-gray-600 leading-relaxed">
-                          {plan.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-1">料金</div>
-                      <p className="text-3xl md:text-4xl font-bold text-blue-600">
-                        {formatPrice(plan.base_price)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">（税込）</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                  <option value="">選択してください</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          {/* Options Selection */}
-          {selectedPlan && (
-            <div className="mb-6">
-              <h2 className="section-subtitle text-center mb-4">オプション</h2>
-              <div className="space-y-4">
-                {Object.entries(groupedOptions).map(
-                  ([category, categoryOptions]) =>
-                    categoryOptions.length > 0 && (
-                      <div key={category}>
-                        <h3 className="text-xl font-bold text-navy-700 mb-4 pb-2 border-b-2 border-blue-300">
-                          {categoryLabels[category] || category}
-                        </h3>
-                        <div className="space-y-3">
-                          {categoryOptions.map((option) => {
-                            const isSelected = selectedOptions.some((o) => o.id === option.id)
-                            return (
-                              <label
-                                key={option.id}
-                                className={`cursor-pointer transition-all duration-300 flex items-start hover:shadow-lg ${
-                                  isSelected
-                                    ? 'card-blue'
-                                    : 'card'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleOptionToggle(option)}
-                                  className="w-6 h-6 text-blue-600 rounded-sm-japanese focus:ring-blue-500 mt-1"
-                                />
-                                <div className="ml-4 flex-1">
-                                  <div className="flex justify-between items-start gap-4">
+            {/* Plan Selection */}
+            {selectedCategory && filteredPlans.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-base font-semibold text-gray-800 mb-2">
+                  撮影コースをお選びください
+                </label>
+                <select
+                  value={selectedPlan?.id || ''}
+                  onChange={(e) => {
+                    const plan = filteredPlans.find(p => p.id === Number(e.target.value))
+                    setSelectedPlan(plan || null)
+                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+                >
+                  <option value="">選択してください</option>
+                  {filteredPlans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - {formatPrice(plan.base_price)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Selected Plan Details */}
+                {selectedPlan && selectedPlan.description && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+                    <p className="text-sm text-gray-700">{selectedPlan.description}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Options Selection */}
+            {selectedPlan && (
+              <div className="mb-6">
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  オプション（複数選択可）
+                </label>
+                <div className="space-y-4">
+                  {Object.entries(groupedOptions).map(
+                    ([category, categoryOptions]) =>
+                      categoryOptions.length > 0 && (
+                        <div key={category}>
+                          <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-300">
+                            {categoryLabels[category] || category}
+                          </h3>
+                          <div className="space-y-2">
+                            {categoryOptions.map((option) => {
+                              const isSelected = selectedOptions.some((o) => o.id === option.id)
+                              return (
+                                <label
+                                  key={option.id}
+                                  className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center flex-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => handleOptionToggle(option)}
+                                      className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
+                                    />
                                     <div className="flex-1">
-                                      <span className="font-bold text-lg text-navy-700 block mb-1">
+                                      <span className="font-medium text-gray-800 block">
                                         {option.name}
                                       </span>
                                       {option.description && (
-                                        <p className="text-sm text-gray-600">
+                                        <span className="text-xs text-gray-500">
                                           {option.description}
-                                        </p>
+                                        </span>
                                       )}
                                     </div>
-                                    <span className="text-2xl font-bold text-blue-600 whitespace-nowrap">
-                                      {formatPrice(option.price)}
-                                    </span>
                                   </div>
-                                </div>
-                              </label>
-                            )
-                          })}
+                                  <span className="text-base font-semibold text-blue-600 ml-4">
+                                    {formatPrice(option.price)}
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )
-                )}
-              </div>
-            </div>
-          )}
-            </div>
-
-            {/* Right Column - Price Summary (Desktop Sidebar) */}
-            {selectedPlan && (
-              <div className="hidden lg:block lg:w-96">
-                <div className="sticky top-20">
-                  <div className="bg-ivory-100 rounded-md-japanese p-5 border-2 border-gray-200 shadow-xl">
-                    <h2 className="text-2xl font-bold text-navy-700 mb-4 text-center">
-                      お見積もり
-                    </h2>
-
-                    {priceCalculation.appliedCampaign && (
-                      <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-md-japanese">
-                        <p className="text-center text-sm font-bold text-orange-800">
-                          ✨ キャンペーン適用中: {priceCalculation.appliedCampaign.name}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="space-y-2 mb-4 text-base">
-                      <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
-                        <span>小計</span>
-                        <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
-                      </div>
-                      {priceCalculation.discount > 0 && (
-                        <div className="flex justify-between text-red-600 font-semibold pb-2 border-b border-gray-300">
-                          <span>割引</span>
-                          <span>-{formatPrice(priceCalculation.discount)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
-                        <span>消費税（10%）</span>
-                        <span className="font-semibold">{formatPrice(priceCalculation.tax)}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t-2 border-blue-500 mb-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xl font-bold text-navy-700">合計金額</span>
-                        <span className="text-3xl font-bold text-blue-600">
-                          {formatPrice(priceCalculation.total)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleReset} className="btn-secondary w-full py-2">
-                        リセット
-                      </button>
-                      <button className="btn-primary w-full py-2">
-                        予約はこちら
-                      </button>
-                    </div>
-                  </div>
+                      )
+                  )}
                 </div>
               </div>
             )}
@@ -312,58 +240,59 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
         </div>
       </section>
 
-      {/* Price Summary - Mobile Sticky Bottom */}
+      {/* Price Summary - Sticky Bottom */}
       {selectedPlan && (
-        <div className="lg:hidden sticky bottom-0 bg-white border-t-4 border-blue-500 shadow-2xl z-50">
-          <div className="px-3 sm:px-4 py-3">
-            <div className="bg-ivory-100 rounded-md-japanese p-4 border-2 border-gray-200">
-              <h2 className="text-xl font-bold text-navy-700 mb-3 text-center">
-                お見積もり
-              </h2>
+        <div className="sticky bottom-0 bg-white border-t-2 border-pink-300 shadow-xl z-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            {priceCalculation.appliedCampaign && (
+              <div className="mb-3 text-center">
+                <span className="inline-block px-3 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
+                  ✨ {priceCalculation.appliedCampaign.name}
+                </span>
+              </div>
+            )}
 
-              {priceCalculation.appliedCampaign && (
-                <div className="mb-3 p-2 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-md-japanese">
-                  <p className="text-center text-sm font-bold text-orange-800">
-                    ✨ キャンペーン適用中: {priceCalculation.appliedCampaign.name}
-                  </p>
+            <div className="mb-3">
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="text-sm text-gray-600">小計</span>
+                <span className="text-base font-semibold text-gray-800">{formatPrice(priceCalculation.subtotal)}</span>
+              </div>
+              {priceCalculation.discount > 0 && (
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm text-gray-600">割引</span>
+                  <span className="text-base font-semibold text-red-600">-{formatPrice(priceCalculation.discount)}</span>
                 </div>
               )}
-
-              <div className="space-y-2 mb-3 text-sm">
-                <div className="flex justify-between text-gray-700 pb-1 border-b border-gray-300">
-                  <span>小計</span>
-                  <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
-                </div>
-                {priceCalculation.discount > 0 && (
-                  <div className="flex justify-between text-red-600 font-semibold pb-1 border-b border-gray-300">
-                    <span>割引</span>
-                    <span>-{formatPrice(priceCalculation.discount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-gray-700 pb-1 border-b border-gray-300">
-                  <span>消費税（10%）</span>
-                  <span className="font-semibold">{formatPrice(priceCalculation.tax)}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t-2 border-blue-500 mb-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-navy-700">合計金額</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {formatPrice(priceCalculation.total)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={handleReset} className="btn-secondary w-full text-sm py-2">
-                  リセット
-                </button>
-                <button className="btn-primary w-full text-sm py-2">
-                  予約はこちら
-                </button>
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-gray-600">消費税（10%）</span>
+                <span className="text-base font-semibold text-gray-800">{formatPrice(priceCalculation.tax)}</span>
               </div>
             </div>
+
+            <div className="border-t-2 border-pink-400 pt-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold text-gray-800">合計</span>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-pink-600">
+                    {formatPrice(priceCalculation.total)}
+                  </div>
+                  <div className="text-xs text-gray-500">（税込）</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={handleReset} className="px-4 py-3 border-2 border-gray-400 text-gray-700 font-semibold rounded-md hover:bg-gray-50 transition-colors">
+                リセット
+              </button>
+              <button className="px-4 py-3 bg-pink-500 text-white font-semibold rounded-md hover:bg-pink-600 transition-colors">
+                ご予約はこちら
+              </button>
+            </div>
+
+            <p className="text-xs text-center text-gray-500 mt-3">
+              ※撮影する家族の人数や衣装、キャンペーン適用などで金額が異なる場合がございます。
+            </p>
           </div>
         </div>
       )}
