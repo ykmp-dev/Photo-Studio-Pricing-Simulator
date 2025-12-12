@@ -90,6 +90,9 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
       {activeCampaigns.length > 0 && (
         <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
+              現在実施中のキャンペーン
+            </p>
             <div className="space-y-2">
               {activeCampaigns.map((campaign) => (
                 <div
