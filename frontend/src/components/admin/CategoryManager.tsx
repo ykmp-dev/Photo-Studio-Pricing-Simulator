@@ -16,6 +16,7 @@ import {
   linkProductToShooting,
 } from '../../services/categoryService'
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
+import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface CategoryManagerProps {
   shopId: number
@@ -109,10 +110,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('撮影カテゴリを作成しました')
+      alert(getSuccessMessage('create', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -127,10 +128,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('商品カテゴリを作成しました')
+      alert(getSuccessMessage('create', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -150,10 +151,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadItems()
-      alert('アイテムを作成しました')
+      alert(getSuccessMessage('create', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -166,10 +167,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('更新しました')
+      alert(getSuccessMessage('update', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -182,10 +183,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('更新しました')
+      alert(getSuccessMessage('update', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -198,10 +199,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadItems()
-      alert('更新しました')
+      alert(getSuccessMessage('update', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -210,10 +211,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteShootingCategory(id)
       await loadData()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -222,10 +223,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteProductCategory(id)
       await loadData()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -234,10 +235,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteItem(id)
       await loadItems()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -248,7 +249,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       alert('商品カテゴリの関連付けを保存しました')
     } catch (err) {
       console.error(err)
-      alert('保存に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
