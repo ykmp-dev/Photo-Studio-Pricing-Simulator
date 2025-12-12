@@ -126,12 +126,15 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Main Content Section */}
       <section className="py-6 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Category Selection */}
-          {categories.length > 0 && (
-            <div className="mb-6">
-              <div className="diamond-icon mx-auto mb-4"></div>
-              <h2 className="section-subtitle text-center text-gray-800 mb-4">撮影メニュー</h2>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="lg:flex lg:gap-8">
+            {/* Left Column - Main Content */}
+            <div className="lg:flex-1 lg:max-w-3xl">
+              {/* Category Selection */}
+              {categories.length > 0 && (
+                <div className="mb-6">
+                  <div className="diamond-icon mx-auto mb-4"></div>
+                  <h2 className="section-subtitle text-center text-gray-800 mb-4">撮影メニュー</h2>
               <div className="flex flex-wrap justify-center gap-4">
                 {categories.map((category) => (
                   <button
@@ -248,15 +251,73 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
               </div>
             </div>
           )}
+            </div>
+
+            {/* Right Column - Price Summary (Desktop Sidebar) */}
+            {selectedPlan && (
+              <div className="hidden lg:block lg:w-96">
+                <div className="sticky top-20">
+                  <div className="bg-ivory-100 rounded-md-japanese p-5 border-2 border-gray-200 shadow-xl">
+                    <h2 className="text-2xl font-bold text-navy-700 mb-4 text-center">
+                      お見積もり
+                    </h2>
+
+                    {priceCalculation.appliedCampaign && (
+                      <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-md-japanese">
+                        <p className="text-center text-sm font-bold text-orange-800">
+                          ✨ キャンペーン適用中: {priceCalculation.appliedCampaign.name}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 mb-4 text-base">
+                      <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
+                        <span>小計</span>
+                        <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
+                      </div>
+                      {priceCalculation.discount > 0 && (
+                        <div className="flex justify-between text-red-600 font-semibold pb-2 border-b border-gray-300">
+                          <span>割引</span>
+                          <span>-{formatPrice(priceCalculation.discount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-300">
+                        <span>消費税（10%）</span>
+                        <span className="font-semibold">{formatPrice(priceCalculation.tax)}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t-2 border-blue-500 mb-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xl font-bold text-navy-700">合計金額</span>
+                        <span className="text-3xl font-bold text-blue-600">
+                          {formatPrice(priceCalculation.total)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={handleReset} className="btn-secondary w-full py-2">
+                        リセット
+                      </button>
+                      <button className="btn-primary w-full py-2">
+                        予約はこちら
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Price Summary - Sticky */}
+      {/* Price Summary - Mobile Sticky Bottom */}
       {selectedPlan && (
-        <div className="sticky bottom-0 bg-white border-t-4 border-blue-500 shadow-2xl z-50">
-          <div className="w-full md:max-w-md md:ml-auto px-3 sm:px-4 py-3">
+        <div className="lg:hidden sticky bottom-0 bg-white border-t-4 border-blue-500 shadow-2xl z-50">
+          <div className="px-3 sm:px-4 py-3">
             <div className="bg-ivory-100 rounded-md-japanese p-4 border-2 border-gray-200">
-              <h2 className="text-xl md:text-2xl font-bold text-navy-700 mb-3 text-center">
+              <h2 className="text-xl font-bold text-navy-700 mb-3 text-center">
                 お見積もり
               </h2>
 
@@ -268,7 +329,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
                 </div>
               )}
 
-              <div className="space-y-2 mb-3 text-sm md:text-base">
+              <div className="space-y-2 mb-3 text-sm">
                 <div className="flex justify-between text-gray-700 pb-1 border-b border-gray-300">
                   <span>小計</span>
                   <span className="font-semibold">{formatPrice(priceCalculation.subtotal)}</span>
@@ -287,18 +348,18 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
               <div className="pt-3 border-t-2 border-blue-500 mb-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg md:text-xl font-bold text-navy-700">合計金額</span>
-                  <span className="text-2xl md:text-3xl font-bold text-blue-600">
+                  <span className="text-lg font-bold text-navy-700">合計金額</span>
+                  <span className="text-2xl font-bold text-blue-600">
                     {formatPrice(priceCalculation.total)}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={handleReset} className="btn-secondary w-full text-sm md:text-base py-2">
+                <button onClick={handleReset} className="btn-secondary w-full text-sm py-2">
                   リセット
                 </button>
-                <button className="btn-primary w-full text-sm md:text-base py-2">
+                <button className="btn-primary w-full text-sm py-2">
                   予約はこちら
                 </button>
               </div>
