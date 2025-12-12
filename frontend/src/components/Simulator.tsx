@@ -68,12 +68,6 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
   // Get active campaigns
   const activeCampaigns = campaigns.filter((c) => c.is_active)
 
-  // カラフルなカード枠線用の色をサイクル
-  const getCardClass = (index: number) => {
-    const classes = ['card-blue', 'card-pink', 'card-green']
-    return classes[index % classes.length]
-  }
-
   return (
     <div className="min-h-screen bg-ivory-500">
       <Header />
@@ -83,7 +77,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <div className="diamond-icon mx-auto mb-4"></div>
           <h1 className="section-title text-gray-800 mb-3">
-            WEB仮予約フォーム
+            料金シミュレーション
           </h1>
           <div className="accent-line"></div>
           <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
@@ -94,29 +88,32 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-6 bg03-pattern">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="diamond-icon mx-auto mb-4"></div>
-            <h2 className="section-subtitle text-center text-gray-800 mb-4">
-              イベント・キャンペーン
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeCampaigns.map((campaign, index) => (
+        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="space-y-2">
+              {activeCampaigns.map((campaign) => (
                 <div
                   key={campaign.id}
-                  className={`${getCardClass(index)} hover:shadow-xl transition-all duration-300`}
+                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
                 >
-                  <h3 className="text-lg font-bold text-navy-700 mb-3">
-                    {campaign.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">
-                    期間: {campaign.start_date} 〜 {campaign.end_date}
-                  </p>
-                  <p className="text-xl font-bold text-blue-600 mt-3">
-                    {campaign.discount_type === 'percentage'
-                      ? `${campaign.discount_value}% OFF`
-                      : `${formatPrice(campaign.discount_value)} 引き`}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🎉</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">
+                        {campaign.name}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {campaign.start_date} 〜 {campaign.end_date}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-orange-600">
+                      {campaign.discount_type === 'percentage'
+                        ? `${campaign.discount_value}% OFF`
+                        : `${formatPrice(campaign.discount_value)} 引き`}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -242,7 +239,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
 
       {/* Price Summary - Sticky Bottom */}
       {selectedPlan && (
-        <div className="sticky bottom-0 bg-white border-t-2 border-pink-300 shadow-xl z-50">
+        <div className="sticky bottom-0 bg-white border-t-2 border-blue-300 shadow-xl z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {priceCalculation.appliedCampaign && (
               <div className="mb-3 text-center">
@@ -252,28 +249,11 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
               </div>
             )}
 
-            <div className="mb-3">
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="text-sm text-gray-600">小計</span>
-                <span className="text-base font-semibold text-gray-800">{formatPrice(priceCalculation.subtotal)}</span>
-              </div>
-              {priceCalculation.discount > 0 && (
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-sm text-gray-600">割引</span>
-                  <span className="text-base font-semibold text-red-600">-{formatPrice(priceCalculation.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm text-gray-600">消費税（10%）</span>
-                <span className="text-base font-semibold text-gray-800">{formatPrice(priceCalculation.tax)}</span>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-pink-400 pt-3 mb-4">
+            <div className="border-t-2 border-blue-400 pt-3 mb-4">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold text-gray-800">合計</span>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-pink-600">
+                  <div className="text-3xl font-bold text-blue-600">
                     {formatPrice(priceCalculation.total)}
                   </div>
                   <div className="text-xs text-gray-500">（税込）</div>
@@ -285,7 +265,7 @@ export default function Simulator({ plans, options, campaigns }: SimulatorProps)
               <button onClick={handleReset} className="px-4 py-3 border-2 border-gray-400 text-gray-700 font-semibold rounded-md hover:bg-gray-50 transition-colors">
                 リセット
               </button>
-              <button className="px-4 py-3 bg-pink-500 text-white font-semibold rounded-md hover:bg-pink-600 transition-colors">
+              <button className="px-4 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors">
                 ご予約はこちら
               </button>
             </div>
