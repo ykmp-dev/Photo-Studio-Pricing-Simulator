@@ -1,0 +1,120 @@
+// カテゴリとアイテムの型定義
+
+// 撮影カテゴリ（親カテゴリ）
+export interface ShootingCategory {
+  id: number
+  shop_id: number
+  name: string
+  display_name: string
+  description: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// 商品カテゴリ（子カテゴリ）
+export interface ProductCategory {
+  id: number
+  shop_id: number
+  name: string
+  display_name: string
+  description: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// 撮影カテゴリと商品カテゴリの関連
+export interface ShootingProductAssociation {
+  id: number
+  shooting_category_id: number
+  product_category_id: number
+  sort_order: number
+  created_at: string
+}
+
+// アイテム（実際の商品）
+export interface Item {
+  id: number
+  shop_id: number
+  product_category_id: number
+  name: string
+  price: number // 税込価格（円）
+  description: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// 作成用の型
+export interface CreateShootingCategory {
+  shop_id: number
+  name: string
+  display_name: string
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+export interface CreateProductCategory {
+  shop_id: number
+  name: string
+  display_name: string
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+export interface CreateItem {
+  shop_id: number
+  product_category_id: number
+  name: string
+  price: number
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+export interface CreateShootingProductAssociation {
+  shooting_category_id: number
+  product_category_id: number
+  sort_order?: number
+}
+
+// 更新用の型
+export interface UpdateShootingCategory {
+  name?: string
+  display_name?: string
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+export interface UpdateProductCategory {
+  name?: string
+  display_name?: string
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+export interface UpdateItem {
+  name?: string
+  price?: number
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
+// 商品カテゴリとアイテムを含む拡張型
+export interface ProductCategoryWithItems extends ProductCategory {
+  items: Item[]
+}
+
+// 撮影カテゴリと関連商品カテゴリを含む拡張型
+export interface ShootingCategoryWithProducts extends ShootingCategory {
+  product_categories: ProductCategoryWithItems[]
+}

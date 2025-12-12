@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext'
 import PlanManager from './admin/PlanManager'
 import OptionManager from './admin/OptionManager'
 import CampaignManager from './admin/CampaignManager'
+import CategoryManager from './admin/CategoryManager'
 import FormList from './admin/FormList'
 import FormBuilder from './admin/FormBuilder'
 
-type Tab = 'plans' | 'options' | 'campaigns' | 'forms'
+type Tab = 'plans' | 'options' | 'campaigns' | 'categories' | 'forms'
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
@@ -91,6 +92,17 @@ export default function AdminDashboard() {
               キャンペーン管理
             </button>
             <button
+              onClick={() => setActiveTab('categories')}
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
+                activeTab === 'categories'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
+              }`}
+              style={{ letterSpacing: '0.05em' }}
+            >
+              カテゴリ管理
+            </button>
+            <button
               onClick={() => {
                 setActiveTab('forms')
                 setFormBuilderView('list')
@@ -113,6 +125,7 @@ export default function AdminDashboard() {
         {activeTab === 'plans' && <PlanManager shopId={shopId} />}
         {activeTab === 'options' && <OptionManager shopId={shopId} />}
         {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
+        {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
         {activeTab === 'forms' && (
           <>
             {formBuilderView === 'list' && (
