@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import CampaignManager from './admin/CampaignManager'
+import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
 import FormList from './admin/FormList'
 import FormBuilder from './admin/FormBuilder'
