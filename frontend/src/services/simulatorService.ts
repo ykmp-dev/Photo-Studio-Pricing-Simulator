@@ -67,13 +67,13 @@ export function findApplicableCampaign(
 }
 
 /**
- * 価格計算
+ * 価格計算（税込表示）
  */
 export function calculateSimulatorPrice(
   selectedItems: { id: number; price: number; product_category_id: number; shooting_category_id: number }[],
   campaigns: CampaignWithAssociations[]
 ) {
-  // 小計
+  // 小計（税込）- アイテム価格は税込前提
   const subtotal = selectedItems.reduce((sum, item) => sum + item.price, 0)
 
   // 適用可能なキャンペーン検索
@@ -89,14 +89,12 @@ export function calculateSimulatorPrice(
     }
   }
 
-  const discountedPrice = subtotal - discount
-  const tax = Math.floor(discountedPrice * 0.1)
-  const total = discountedPrice + tax
+  // 合計（税込）
+  const total = subtotal - discount
 
   return {
     subtotal,
     discount,
-    tax,
     total,
     appliedCampaign,
   }
