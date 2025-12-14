@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { ShootingCategoryWithProducts, Item } from '../types/category'
 import type { CampaignWithAssociations } from '../types/campaign'
+import type { FormSchemaWithBlocks } from '../types/formBuilder'
 import { getSimulatorData, calculateSimulatorPrice } from '../services/simulatorService'
+import { getFormByShootingCategory } from '../services/formBuilderService'
 import { formatPrice } from '../utils/priceCalculator'
 import Header from './Header'
 import Footer from './Footer'
@@ -17,6 +19,7 @@ export default function SimulatorNew() {
   const [selectedItems, setSelectedItems] = useState<
     Array<Item & { shooting_category_id: number }>
   >([])
+  const [formSchema, setFormSchema] = useState<FormSchemaWithBlocks | null>(null)
 
   useEffect(() => {
     loadData()
@@ -40,6 +43,25 @@ export default function SimulatorNew() {
   const selectedShooting = useMemo(() => {
     return categoryStructure.find((s) => s.id === selectedShootingId) || null
   }, [categoryStructure, selectedShootingId])
+
+  // 撮影カテゴリ選択時にフォームを読み込み
+  useEffect(() => {
+    if (selectedShootingId) {
+      loadForm(selectedShootingId)
+    } else {
+      setFormSchema(null)
+    }
+  }, [selectedShootingId])
+
+  const loadForm = async (shootingCategoryId: number) => {
+    try {
+      const form = await getFormByShootingCategory(shopId, shootingCategoryId)
+      setFormSchema(form)
+    } catch (err) {
+      console.error('フォームの読み込みに失敗しました:', err)
+      setFormSchema(null)
+    }
+  }
 
   // 撮影カテゴリ選択時に自動選択アイテムを選択
   useEffect(() => {
@@ -173,6 +195,45 @@ export default function SimulatorNew() {
                 </div>
               )}
             </div>
+
+            {/* Form Blocks */}
+            {formSchema && formSchema.blocks.length > 0 && (
+              <div className="mb-6 space-y-4">
+                {formSchema.blocks.map((block) => {
+                  if (block.block_type === 'heading') {
+                    return (
+                      <div key={block.id}>
+                        <h2 className="text-xl font-bold text-gray-800">
+                          {block.content?.replace(/^##\s*/, '')}
+                        </h2>
+                      </div>
+                    )
+                  }
+
+                  if (block.block_type === 'text') {
+                    return (
+                      <div key={block.id} className="text-gray-700">
+                        {block.content}
+                      </div>
+                    )
+                  }
+
+                  if (block.block_type === 'list') {
+                    const items = block.content?.split('\n').filter((line) => line.trim()) || []
+                    return (
+                      <ul key={block.id} className="list-disc list-inside space-y-1 text-gray-700">
+                        {items.map((item, index) => (
+                          <li key={index}>{item.replace(/^-\s*/, '')}</li>
+                        ))}
+                      </ul>
+                    )
+                  }
+
+                  // category_reference blocks are handled in the product categories section
+                  return null
+                })}
+              </div>
+            )}
 
             {/* Product Categories & Items */}
             {selectedShooting && (

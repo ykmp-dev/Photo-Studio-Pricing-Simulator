@@ -3,6 +3,7 @@
 export interface FormSchema {
   id: number
   shop_id: number
+  shooting_category_id: number | null
   name: string
   category: string | null
   description: string | null
@@ -13,6 +14,21 @@ export interface FormSchema {
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
+export type BlockType = 'text' | 'heading' | 'list' | 'category_reference'
+
+export interface FormBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  created_at: string
+  updated_at: string
+}
 
 export interface FormField {
   id: number
@@ -138,4 +154,31 @@ export interface FormWithFields extends FormSchema {
 export interface FormFieldWithOptions extends FormField {
   options: FieldOption[]
   conditional_rules: ConditionalRule[]
+}
+
+// フォームとブロック
+export interface FormSchemaWithBlocks extends FormSchema {
+  blocks: FormBlock[]
+}
+
+// Create/Update types for blocks
+export interface CreateFormBlock {
+  form_schema_id: number
+  block_type: BlockType
+  content?: string
+  sort_order?: number
+  metadata?: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+}
+
+export interface UpdateFormBlock {
+  block_type?: BlockType
+  content?: string
+  sort_order?: number
+  metadata?: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
 }
