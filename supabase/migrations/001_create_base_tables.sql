@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS plans (
 CREATE INDEX IF NOT EXISTS idx_plans_shop_id ON plans(shop_id);
 CREATE INDEX IF NOT EXISTS idx_plans_category ON plans(category);
 
+DROP TRIGGER IF EXISTS update_plans_updated_at ON plans;
 CREATE TRIGGER update_plans_updated_at BEFORE UPDATE ON plans
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS options (
 CREATE INDEX IF NOT EXISTS idx_options_shop_id ON options(shop_id);
 CREATE INDEX IF NOT EXISTS idx_options_category ON options(category);
 
+DROP TRIGGER IF EXISTS update_options_updated_at ON options;
 CREATE TRIGGER update_options_updated_at BEFORE UPDATE ON options
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -80,6 +82,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
 CREATE INDEX IF NOT EXISTS idx_campaigns_shop_id ON campaigns(shop_id);
 CREATE INDEX IF NOT EXISTS idx_campaigns_dates ON campaigns(start_date, end_date);
 
+DROP TRIGGER IF EXISTS update_campaigns_updated_at ON campaigns;
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
