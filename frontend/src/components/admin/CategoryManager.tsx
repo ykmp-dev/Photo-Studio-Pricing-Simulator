@@ -44,6 +44,8 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formPrice, setFormPrice] = useState(0)
+  const [formIsRequired, setFormIsRequired] = useState(false)
+  const [formAutoSelect, setFormAutoSelect] = useState(false)
 
   // 商品カテゴリの関連付け
   const [linkedProductIds, setLinkedProductIds] = useState<number[]>([])
@@ -148,6 +150,8 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
+        is_required: formIsRequired,
+        auto_select: formAutoSelect,
       })
       resetForm()
       await loadItems()
@@ -196,6 +200,8 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
+        is_required: formIsRequired,
+        auto_select: formAutoSelect,
       })
       resetForm()
       await loadItems()
@@ -264,6 +270,8 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName('')
     setFormDescription('')
     setFormPrice(0)
+    setFormIsRequired(false)
+    setFormAutoSelect(false)
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
@@ -287,6 +295,8 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName(item.name)
     setFormPrice(item.price)
     setFormDescription(item.description || '')
+    setFormIsRequired(item.is_required)
+    setFormAutoSelect(item.auto_select)
     setEditingItemId(item.id)
   }
 
@@ -655,6 +665,30 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                     rows={3}
                   />
                 </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formAutoSelect}
+                      onChange={(e) => setFormAutoSelect(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      自動選択（商品カテゴリ選択時に自動で選択）
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formIsRequired}
+                      onChange={(e) => setFormIsRequired(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      必須（選択解除不可）
+                    </span>
+                  </label>
+                </div>
                 <div className="flex gap-2">
                   {editingItemId ? (
                     <>
@@ -699,7 +733,19 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                   <div key={item.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                          {item.auto_select && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                              自動選択
+                            </span>
+                          )}
+                          {item.is_required && (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                              必須
+                            </span>
+                          )}
+                        </div>
                         <p className="text-lg font-bold text-blue-600">¥{item.price.toLocaleString()}</p>
                       </div>
                       <div className="flex gap-2">
