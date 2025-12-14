@@ -6,6 +6,7 @@ ALTER TABLE form_schemas
 ADD COLUMN IF NOT EXISTS shooting_category_id INT REFERENCES shooting_categories(id) ON DELETE CASCADE;
 
 -- ユニーク制約: 1撮影カテゴリに1フォーム
+-- 部分インデックス: shooting_category_idがNULLでない場合のみ適用
 CREATE UNIQUE INDEX IF NOT EXISTS idx_form_schemas_shooting_category
 ON form_schemas(shop_id, shooting_category_id)
 WHERE shooting_category_id IS NOT NULL;
@@ -92,16 +93,23 @@ BEGIN
     LIMIT 1;
 
     IF v_shooting_category_id IS NOT NULL THEN
-      -- フォームスキーマ作成
-      INSERT INTO form_schemas (shop_id, shooting_category_id, name, description)
-      VALUES (
-        v_shop_id,
-        v_shooting_category_id,
-        '七五三撮影フォーム',
-        '七五三の撮影に必要な情報を入力してください'
-      )
-      ON CONFLICT (shop_id, shooting_category_id) DO NOTHING
-      RETURNING id INTO v_form_schema_id;
+      -- 既存のフォームをチェック
+      SELECT id INTO v_form_schema_id
+      FROM form_schemas
+      WHERE shop_id = v_shop_id AND shooting_category_id = v_shooting_category_id
+      LIMIT 1;
+
+      -- フォームが存在しない場合のみ作成
+      IF v_form_schema_id IS NULL THEN
+        INSERT INTO form_schemas (shop_id, shooting_category_id, name, description)
+        VALUES (
+          v_shop_id,
+          v_shooting_category_id,
+          '七五三撮影フォーム',
+          '七五三の撮影に必要な情報を入力してください'
+        )
+        RETURNING id INTO v_form_schema_id;
+      END IF;
 
       -- フォームが作成された場合、ブロックを追加
       IF v_form_schema_id IS NOT NULL THEN
