@@ -41,12 +41,30 @@ export default function SimulatorNew() {
     return categoryStructure.find((s) => s.id === selectedShootingId) || null
   }, [categoryStructure, selectedShootingId])
 
+  // 撮影カテゴリ選択時に自動選択アイテムを選択
+  useEffect(() => {
+    if (selectedShooting) {
+      const autoSelectItems: Array<Item & { shooting_category_id: number }> = []
+      selectedShooting.product_categories.forEach((productCategory) => {
+        productCategory.items.forEach((item) => {
+          if (item.auto_select) {
+            autoSelectItems.push({ ...item, shooting_category_id: selectedShooting.id })
+          }
+        })
+      })
+      setSelectedItems(autoSelectItems)
+    }
+  }, [selectedShooting])
+
   // 価格計算
   const priceCalculation = useMemo(() => {
     return calculateSimulatorPrice(selectedItems, campaigns)
   }, [selectedItems, campaigns])
 
   const handleItemToggle = (item: Item, shootingCategoryId: number) => {
+    // 必須アイテムは選択解除できない
+    if (item.is_required) return
+
     setSelectedItems((prev) => {
       const exists = prev.find((i) => i.id === item.id)
       if (exists) {
@@ -179,7 +197,11 @@ export default function SimulatorNew() {
                             return (
                               <label
                                 key={item.id}
-                                className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
+                                className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
+                                  item.is_required
+                                    ? 'bg-blue-50 border-blue-300'
+                                    : 'hover:bg-blue-50 cursor-pointer'
+                                }`}
                               >
                                 <div className="flex items-center flex-1">
                                   <input
@@ -188,14 +210,22 @@ export default function SimulatorNew() {
                                     onChange={() =>
                                       handleItemToggle(item, selectedShooting.id)
                                     }
-                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
+                                    disabled={item.is_required}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
                                   />
                                   <div className="flex-1">
-                                    <span className="font-medium text-gray-800 block">
-                                      {item.name}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-gray-800">
+                                        {item.name}
+                                      </span>
+                                      {item.is_required && (
+                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                          必須
+                                        </span>
+                                      )}
+                                    </div>
                                     {item.description && (
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-gray-500 block mt-1">
                                         {item.description}
                                       </span>
                                     )}
