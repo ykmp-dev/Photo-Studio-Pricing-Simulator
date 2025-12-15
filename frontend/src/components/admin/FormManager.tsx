@@ -426,7 +426,34 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         <p className="text-xs text-blue-600 mt-1">📋 {category.display_name}</p>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          const newStatus = !form.is_active
+                          const action = newStatus ? '公開' : '非公開'
+                          if (!confirm(`「${form.name}」を${action}にしますか？`)) return
+                          try {
+                            await updateFormSchema(form.id, { is_active: newStatus })
+                            await loadData()
+                            if (selectedFormId === form.id) {
+                              await loadFormWithBlocks(selectedFormId)
+                            }
+                            alert(`フォームを${action}にしました`)
+                          } catch (err) {
+                            console.error(err)
+                            alert(`${action}に失敗しました: ` + getErrorMessage(err))
+                          }
+                        }}
+                        className={`text-xs px-2 py-1 rounded ${
+                          form.is_active
+                            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                        title={form.is_active ? '非公開にする' : '公開する'}
+                      >
+                        {form.is_active ? '🔒' : '🚀'}
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -447,11 +474,15 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       </button>
                     </div>
                   </div>
-                  {!form.is_active && (
-                    <span className="inline-block text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                      非アクティブ
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded ${
+                      form.is_active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {form.is_active ? '✅ 公開中' : '⚪ 非公開'}
                     </span>
-                  )}
+                  </div>
                 </div>
               )
             })}
@@ -478,23 +509,25 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     👁️ プレビュー
                   </button>
                   <button
-                    onClick={handleToggleFormPublish}
-                    className={`px-4 py-2 rounded-md text-sm font-medium ${
-                      selectedForm.is_active
-                        ? 'bg-orange-600 text-white hover:bg-orange-700'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
+                    onClick={async () => {
+                      if (!confirm('フォームの設定を更新しますか？')) return
+                      try {
+                        // Reload to reflect any unsaved changes
+                        await loadData()
+                        if (selectedFormId) {
+                          await loadFormWithBlocks(selectedFormId)
+                        }
+                        alert('フォームを更新しました')
+                      } catch (err) {
+                        console.error(err)
+                        alert('更新に失敗しました: ' + getErrorMessage(err))
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                   >
-                    {selectedForm.is_active ? '🔒 非公開にする' : '🚀 公開する'}
+                    🔄 更新
                   </button>
                 </div>
-              </div>
-
-              {/* 公開ステータス表示 */}
-              <div className={`mb-4 px-3 py-2 rounded-md text-sm ${
-                selectedForm.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-700 border border-gray-200'
-              }`}>
-                ステータス: {selectedForm.is_active ? '✅ 公開中' : '⚪ 非公開'}
               </div>
 
               <div className="grid grid-cols-2 gap-6">
