@@ -32,6 +32,7 @@ export interface ShootingProductAssociation {
   shooting_category_id: number
   product_category_id: number
   sort_order: number
+  is_required?: boolean
   created_at: string
 }
 
@@ -86,6 +87,7 @@ export interface CreateShootingProductAssociation {
   shooting_category_id: number
   product_category_id: number
   sort_order?: number
+  is_required?: boolean
 }
 
 // 更新用の型

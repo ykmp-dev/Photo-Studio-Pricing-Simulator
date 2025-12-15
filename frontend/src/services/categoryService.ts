@@ -181,6 +181,21 @@ export async function createShootingProductAssociation(
   return data
 }
 
+export async function updateShootingProductAssociation(
+  id: number,
+  association: Partial<CreateShootingProductAssociation>
+): Promise<ShootingProductAssociation> {
+  const { data, error } = await supabase
+    .from('shooting_product_associations')
+    .update(association)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function deleteShootingProductAssociation(id: number): Promise<void> {
   const { error } = await supabase
     .from('shooting_product_associations')
@@ -188,6 +203,14 @@ export async function deleteShootingProductAssociation(id: number): Promise<void
     .eq('id', id)
 
   if (error) throw error
+}
+
+export async function updateAssociationsSortOrder(associationIds: number[]): Promise<void> {
+  const updates = associationIds.map((id, index) =>
+    updateShootingProductAssociation(id, { sort_order: index })
+  )
+
+  await Promise.all(updates)
 }
 
 // ==================== 複合クエリ ====================
