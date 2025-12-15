@@ -308,12 +308,27 @@ export default function SimulatorNew() {
                   }
 
                   // Category reference block
-                  if (block.block_type === 'category_reference' && block.metadata?.product_category_id) {
+                  if (block.block_type === 'category_reference') {
+                    console.log('Category reference block:', {
+                      block_id: block.id,
+                      metadata: block.metadata,
+                      product_category_id: block.metadata?.product_category_id,
+                      available_categories: selectedShooting.product_categories.map(pc => ({ id: pc.id, name: pc.display_name }))
+                    })
+
+                    if (!block.metadata?.product_category_id) {
+                      console.warn('Block has no product_category_id in metadata:', block.id)
+                      return null
+                    }
+
                     const productCategory = selectedShooting.product_categories.find(
                       (pc) => pc.id === block.metadata.product_category_id
                     )
 
-                    if (!productCategory) return null
+                    if (!productCategory) {
+                      console.warn('Product category not found:', block.metadata.product_category_id)
+                      return null
+                    }
 
                     return (
                       <div key={block.id}>
