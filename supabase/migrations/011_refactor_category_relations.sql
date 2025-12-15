@@ -53,12 +53,12 @@ BEGIN
     -- shooting_category_idが設定されている商品カテゴリを関連テーブルに移行
     INSERT INTO shooting_product_associations (shooting_category_id, product_category_id, sort_order, is_required)
     SELECT
-      shooting_category_id,
-      id as product_category_id,
-      ROW_NUMBER() OVER (PARTITION BY shooting_category_id ORDER BY id) - 1 as sort_order,
+      pc.shooting_category_id,
+      pc.id as product_category_id,
+      ROW_NUMBER() OVER (PARTITION BY pc.shooting_category_id ORDER BY pc.id) - 1 as sort_order,
       FALSE as is_required
-    FROM product_categories
-    WHERE shooting_category_id IS NOT NULL
+    FROM product_categories pc
+    WHERE pc.shooting_category_id IS NOT NULL
     ON CONFLICT (shooting_category_id, product_category_id) DO NOTHING;
   END IF;
 END $$;
