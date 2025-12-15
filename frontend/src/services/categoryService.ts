@@ -11,6 +11,7 @@ import type {
   UpdateShootingCategory,
   UpdateProductCategory,
   UpdateItem,
+  UpdateShootingProductAssociation,
   ProductCategoryWithItems,
   ShootingCategoryWithProducts,
 } from '../types/category'
@@ -181,6 +182,21 @@ export async function createShootingProductAssociation(
   return data
 }
 
+export async function updateShootingProductAssociation(
+  id: number,
+  association: UpdateShootingProductAssociation
+): Promise<ShootingProductAssociation> {
+  const { data, error } = await supabase
+    .from('shooting_product_associations')
+    .update(association)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function deleteShootingProductAssociation(id: number): Promise<void> {
   const { error } = await supabase
     .from('shooting_product_associations')
@@ -188,6 +204,19 @@ export async function deleteShootingProductAssociation(id: number): Promise<void
     .eq('id', id)
 
   if (error) throw error
+}
+
+/**
+ * 撮影カテゴリの商品カテゴリ関連を一括更新（並び順変更）
+ */
+export async function updateAssociationsSortOrder(
+  updates: Array<{ id: number; sort_order: number }>
+): Promise<void> {
+  await Promise.all(
+    updates.map(({ id, sort_order }) =>
+      updateShootingProductAssociation(id, { sort_order })
+    )
+  )
 }
 
 // ==================== 複合クエリ ====================

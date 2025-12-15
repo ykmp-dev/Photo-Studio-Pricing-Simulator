@@ -236,10 +236,6 @@ theme: {
 
 MIT License
 
-## 🤝 参考サイト
-
-- UI/UX: [らかんスタジオ](https://laquan.com/simulation/index.html)
-- 料金体系: [横浜そごう写真館](https://www.watanabephoto.co.jp/y_sogo/)
 
 ## ⚠️ 注意事項
 

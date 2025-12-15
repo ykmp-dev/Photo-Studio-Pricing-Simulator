@@ -14,6 +14,29 @@ export interface FormSchema {
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
+export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no'
+
+// Condition for conditional block display
+export interface ShowCondition {
+  type: 'yes_no'
+  block_id: number
+  value: 'yes' | 'no'
+}
+
+export interface FormBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  show_condition: ShowCondition | null
+  created_at: string
+  updated_at: string
+}
 
 export interface FormField {
   id: number
@@ -141,32 +164,6 @@ export interface FormWithFields extends FormSchema {
 export interface FormFieldWithOptions extends FormField {
   options: FieldOption[]
   conditional_rules: ConditionalRule[]
-}
-
-// ==================== Form Blocks ====================
-
-export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no'
-
-// Condition for conditional block display
-export interface ShowCondition {
-  type: 'yes_no'
-  block_id: number
-  value: 'yes' | 'no'
-}
-
-export interface FormBlock {
-  id: number
-  form_schema_id: number
-  block_type: BlockType
-  content: string | null
-  sort_order: number
-  metadata: {
-    product_category_id?: number
-    display_mode?: 'expanded' | 'collapsed'
-  }
-  show_condition: ShowCondition | null
-  created_at: string
-  updated_at: string
 }
 
 // フォームとブロック

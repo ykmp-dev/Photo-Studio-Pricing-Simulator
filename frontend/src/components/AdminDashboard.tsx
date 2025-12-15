@@ -1,36 +1,18 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import CampaignManager from './admin/CampaignManager'
+import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
-import FormList from './admin/FormList'
-import FormBuilder from './admin/FormBuilder'
+import FormManager from './admin/FormManager'
 
 type Tab = 'categories' | 'campaigns' | 'forms'
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('categories')
-  const [formBuilderView, setFormBuilderView] = useState<'list' | 'edit' | 'create'>('list')
-  const [editingFormId, setEditingFormId] = useState<number | undefined>()
   const shopId = 1 // TODO: Get from user profile or context
 
   const handleSignOut = async () => {
     await signOut()
-  }
-
-  const handleCreateNewForm = () => {
-    setEditingFormId(undefined)
-    setFormBuilderView('create')
-  }
-
-  const handleEditForm = (formId: number) => {
-    setEditingFormId(formId)
-    setFormBuilderView('edit')
-  }
-
-  const handleBackToFormList = () => {
-    setFormBuilderView('list')
-    setEditingFormId(undefined)
   }
 
   return (
@@ -79,10 +61,7 @@ export default function AdminDashboard() {
               キャンペーン管理
             </button>
             <button
-              onClick={() => {
-                setActiveTab('forms')
-                setFormBuilderView('list')
-              }}
+              onClick={() => setActiveTab('forms')}
               className={`py-4 px-2 border-b-4 font-semibold transition-all ${
                 activeTab === 'forms'
                   ? 'border-blue-500 text-blue-600'
@@ -100,24 +79,7 @@ export default function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
         {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
-        {activeTab === 'forms' && (
-          <>
-            {formBuilderView === 'list' && (
-              <FormList
-                shopId={shopId}
-                onEditForm={handleEditForm}
-                onCreateNew={handleCreateNewForm}
-              />
-            )}
-            {(formBuilderView === 'edit' || formBuilderView === 'create') && (
-              <FormBuilder
-                shopId={shopId}
-                formId={editingFormId}
-                onBack={handleBackToFormList}
-              />
-            )}
-          </>
-        )}
+        {activeTab === 'forms' && <FormManager shopId={shopId} />}
       </main>
     </div>
   )
