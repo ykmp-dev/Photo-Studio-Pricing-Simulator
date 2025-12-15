@@ -278,6 +278,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
       list: 'リスト', // 非推奨だが、既存データのため残す
       category_reference: 'カテゴリ参照',
       yes_no: 'Yes/No質問',
+      choice: '選択肢質問',
     }
     return labels[type]
   }
