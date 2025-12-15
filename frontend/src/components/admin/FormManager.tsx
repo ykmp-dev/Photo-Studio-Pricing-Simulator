@@ -142,6 +142,10 @@ export default function FormManager({ shopId }: FormManagerProps) {
       return
     }
     try {
+      // 最下層に追加: 現在の最大sort_order + 1
+      const maxSortOrder = selectedForm?.blocks.reduce((max, block) =>
+        Math.max(max, block.sort_order), -1) ?? -1
+
       await createFormBlock({
         form_schema_id: selectedFormId,
         block_type: blockType,
@@ -150,6 +154,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
           ? { product_category_id: blockProductCategoryId }
           : {},
         show_condition: conditionEnabled ? blockShowCondition : null,
+        sort_order: maxSortOrder + 1,
       })
       resetBlockForm()
       await loadFormWithBlocks(selectedFormId)
@@ -604,12 +609,19 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     <p className="text-sm text-gray-500">ブロックがまだありません</p>
                   ) : (
                     <div className="space-y-2">
-                      {selectedForm.blocks.map((block, index) => (
+                      {selectedForm.blocks.map((block, index) => {
+                        // カテゴリ参照ブロックの場合、選択されているカテゴリ名を取得
+                        const categoryName = block.block_type === 'category_reference' && block.metadata?.product_category_id
+                          ? productCategories.find(cat => cat.id === block.metadata.product_category_id)?.display_name || '不明なカテゴリ'
+                          : null
+
+                        return (
                         <div key={block.id} className="border border-gray-200 rounded p-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded mb-1">
                                 {getBlockTypeLabel(block.block_type)}
+                                {categoryName && ` : ${categoryName}`}
                               </span>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                                 {block.content || '(内容なし)'}
@@ -647,7 +659,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
