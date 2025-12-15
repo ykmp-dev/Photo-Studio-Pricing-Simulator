@@ -12,7 +12,7 @@ import {
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories, getItems } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
-import type { ShootingCategory } from '../../types/category'
+import type { ShootingCategory, Item } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface FormManagerProps {
@@ -70,9 +70,21 @@ export default function FormManager({ shopId }: FormManagerProps) {
         getShootingCategories(shopId),
         getProductCategories(shopId),
       ])
+
+      // 各商品カテゴリのアイテムを取得
+      const productCategoriesWithItems = await Promise.all(
+        productCategoriesData.map(async (category) => {
+          const items = await getItems(shopId, category.id)
+          return {
+            ...category,
+            items,
+          }
+        })
+      )
+
       setForms(formsData)
       setShootingCategories(categoriesData)
-      setProductCategories(productCategoriesData)
+      setProductCategories(productCategoriesWithItems)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -860,12 +872,26 @@ export default function FormManager({ shopId }: FormManagerProps) {
                                   if (blockId) {
                                     const sourceBlock = selectedForm.blocks.find(b => b.id === blockId)
                                     if (sourceBlock) {
+                                      let defaultValue = ''
+                                      if (sourceBlock.block_type === 'yes_no') {
+                                        defaultValue = 'yes'
+                                      } else if (sourceBlock.block_type === 'choice') {
+                                        // カテゴリ連動モードの場合、カテゴリのアイテムから取得
+                                        if (sourceBlock.metadata?.auto_sync_category_id) {
+                                          const category = productCategories.find(
+                                            (pc) => pc.id === sourceBlock.metadata.auto_sync_category_id
+                                          )
+                                          if (category && category.items && category.items.length > 0) {
+                                            defaultValue = `item_${category.items[0].id}`
+                                          }
+                                        } else {
+                                          defaultValue = sourceBlock.metadata?.choice_options?.[0]?.value || ''
+                                        }
+                                      }
                                       setBlockShowCondition({
                                         type: sourceBlock.block_type as 'yes_no' | 'choice',
                                         block_id: blockId,
-                                        value: sourceBlock.block_type === 'yes_no'
-                                          ? 'yes'
-                                          : sourceBlock.metadata?.choice_options?.[0]?.value || ''
+                                        value: defaultValue
                                       })
                                     }
                                   }
@@ -907,7 +933,26 @@ export default function FormManager({ shopId }: FormManagerProps) {
                                       </select>
                                     )
                                   } else if (sourceBlock.block_type === 'choice') {
-                                    const options = sourceBlock.metadata?.choice_options || []
+                                    // カテゴリ連動モードの場合、カテゴリのアイテムから選択肢を生成
+                                    let options = sourceBlock.metadata?.choice_options || []
+                                    if (sourceBlock.metadata?.auto_sync_category_id) {
+                                      const category = productCategories.find(
+                                        (pc) => pc.id === sourceBlock.metadata.auto_sync_category_id
+                                      )
+                                      if (category && category.items) {
+                                        options = category.items.map((item: Item) => ({
+                                          value: `item_${item.id}`,
+                                          label: item.name,
+                                          price: item.price,
+                                          description: item.description || undefined,
+                                        }))
+                                      }
+                                    }
+
+                                    if (options.length === 0) {
+                                      return <p className="text-xs text-gray-500">選択肢がありません</p>
+                                    }
+
                                     return (
                                       <select
                                         value={blockShowCondition.value}
