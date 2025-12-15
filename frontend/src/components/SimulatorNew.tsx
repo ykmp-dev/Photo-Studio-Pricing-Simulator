@@ -196,7 +196,7 @@ export default function SimulatorNew() {
             </div>
 
             {/* Form Blocks & Product Categories (Integrated) */}
-            {selectedShootingId && formSchema && formSchema.blocks.length > 0 ? (
+            {selectedShootingId && formSchema && formSchema.blocks.length > 0 && (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block, index) => {
                   // デバッグログ
@@ -409,67 +409,6 @@ export default function SimulatorNew() {
                   return null
                 })}
               </div>
-            ) : (
-              // Fallback: Show all product categories if no form blocks
-              selectedShootingId && (
-              <div className="mb-6">
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  オプション（複数選択可）
-                </label>
-                <div className="space-y-4">
-                  {allProductCategories.map((productCategory) => (
-                    <div key={productCategory.id}>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-300">
-                        {productCategory.display_name}
-                      </h3>
-                      {productCategory.items.length === 0 ? (
-                        <p className="text-sm text-gray-500 py-2">
-                          このカテゴリにアイテムはありません
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {productCategory.items.map((item) => {
-                            const isSelected = selectedItems.some((i) => i.id === item.id)
-                            return (
-                              <label
-                                key={item.id}
-                                className="flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors hover:bg-blue-50 cursor-pointer"
-                              >
-                                <div className="flex items-center flex-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() =>
-                                      handleItemToggle(item, selectedShootingId || 0)
-                                    }
-                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-gray-800">
-                                        {item.name}
-                                      </span>
-                                    </div>
-                                    {item.description && (
-                                      <span className="text-xs text-gray-500 block mt-1">
-                                        {item.description}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <span className="text-base font-semibold text-blue-600 ml-4">
-                                  {formatPrice(item.price)}
-                                </span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              )
             )}
           </div>
         </div>
