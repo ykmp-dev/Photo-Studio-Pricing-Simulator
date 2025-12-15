@@ -43,6 +43,7 @@ export interface FormBlock {
     // choice用
     choice_options?: ChoiceOption[]
     choice_display?: 'radio' | 'select' | 'auto'  // auto: 選択肢数で自動判定
+    auto_sync_category_id?: number  // カテゴリから自動生成（カテゴリ連動モード）
   }
   show_condition: ShowCondition | null
   created_at: string

@@ -318,7 +318,22 @@ export default function SimulatorNew() {
 
                   // Choice block
                   if (block.block_type === 'choice') {
-                    const options = block.metadata?.choice_options || []
+                    // カテゴリ連動モードの場合、カテゴリのアイテムから選択肢を生成
+                    let options = block.metadata?.choice_options || []
+                    if (block.metadata?.auto_sync_category_id) {
+                      const category = allProductCategories.find(
+                        (pc) => pc.id === block.metadata.auto_sync_category_id
+                      )
+                      if (category) {
+                        options = category.items.map(item => ({
+                          value: `item_${item.id}`,
+                          label: item.name,
+                          price: item.price,
+                          description: item.description || undefined,
+                        }))
+                      }
+                    }
+
                     if (options.length === 0) {
                       return null
                     }
