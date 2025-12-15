@@ -10,9 +10,9 @@ import {
   deleteFormBlock,
   updateBlocksOrder,
 } from '../../services/formBuilderService'
-import { getShootingCategories, getProductCategories } from '../../services/categoryService'
-import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition } from '../../types/formBuilder'
-import type { ShootingCategory } from '../../types/category'
+import { getShootingCategories, getProductCategories, getItems } from '../../services/categoryService'
+import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
+import type { ShootingCategory, Item } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface FormManagerProps {
@@ -42,6 +42,16 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [blockShowCondition, setBlockShowCondition] = useState<ShowCondition | null>(null)
   const [conditionEnabled, setConditionEnabled] = useState(false)
 
+  // Choice ブロック専用の状態
+  const [blockChoiceOptions, setBlockChoiceOptions] = useState<ChoiceOption[]>([])
+  const [blockChoiceDisplay, setBlockChoiceDisplay] = useState<'radio' | 'select' | 'auto'>('auto')
+  const [blockChoiceInputMode, setBlockChoiceInputMode] = useState<'manual' | 'category'>('manual')
+  const [blockChoiceCategoryId, setBlockChoiceCategoryId] = useState<number | null>(null)
+
+  // プレビューモーダル
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewYesNoAnswers, setPreviewYesNoAnswers] = useState<Map<number, 'yes' | 'no'>>(new Map())
+
   useEffect(() => {
     loadData()
   }, [shopId])
@@ -60,9 +70,21 @@ export default function FormManager({ shopId }: FormManagerProps) {
         getShootingCategories(shopId),
         getProductCategories(shopId),
       ])
+
+      // 各商品カテゴリのアイテムを取得
+      const productCategoriesWithItems = await Promise.all(
+        productCategoriesData.map(async (category) => {
+          const items = await getItems(shopId, category.id)
+          return {
+            ...category,
+            items,
+          }
+        })
+      )
+
       setForms(formsData)
       setShootingCategories(categoriesData)
-      setProductCategories(productCategoriesData)
+      setProductCategories(productCategoriesWithItems)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -142,18 +164,37 @@ export default function FormManager({ shopId }: FormManagerProps) {
       return
     }
     try {
-      // 次の sort_order を計算
-      const nextSortOrder = selectedForm?.blocks.length || 0
+      // 最下層に追加: 現在の最大sort_order + 1
+      const maxSortOrder = selectedForm?.blocks.reduce((max, block) =>
+        Math.max(max, block.sort_order), -1) ?? -1
+
+      // メタデータの構築
+      let metadata: any = {}
+      if (blockType === 'category_reference' && blockProductCategoryId) {
+        metadata = { product_category_id: blockProductCategoryId }
+      } else if (blockType === 'choice') {
+        if (blockChoiceInputMode === 'category' && blockChoiceCategoryId) {
+          // カテゴリ連動モード
+          metadata = {
+            auto_sync_category_id: blockChoiceCategoryId,
+            choice_display: blockChoiceDisplay,
+          }
+        } else {
+          // 手動入力モード
+          metadata = {
+            choice_options: blockChoiceOptions,
+            choice_display: blockChoiceDisplay,
+          }
+        }
+      }
 
       await createFormBlock({
         form_schema_id: selectedFormId,
         block_type: blockType,
         content: blockContent || undefined,
-        sort_order: nextSortOrder,
-        metadata: blockType === 'category_reference' && blockProductCategoryId
-          ? { product_category_id: blockProductCategoryId }
-          : {},
+        metadata,
         show_condition: conditionEnabled ? blockShowCondition : null,
+        sort_order: maxSortOrder + 1,
       })
       resetBlockForm()
       await loadFormWithBlocks(selectedFormId)
@@ -166,12 +207,30 @@ export default function FormManager({ shopId }: FormManagerProps) {
 
   const handleUpdateBlock = async (id: number) => {
     try {
+      // メタデータの構築
+      let metadata: any = {}
+      if (blockType === 'category_reference' && blockProductCategoryId) {
+        metadata = { product_category_id: blockProductCategoryId }
+      } else if (blockType === 'choice') {
+        if (blockChoiceInputMode === 'category' && blockChoiceCategoryId) {
+          // カテゴリ連動モード
+          metadata = {
+            auto_sync_category_id: blockChoiceCategoryId,
+            choice_display: blockChoiceDisplay,
+          }
+        } else {
+          // 手動入力モード
+          metadata = {
+            choice_options: blockChoiceOptions,
+            choice_display: blockChoiceDisplay,
+          }
+        }
+      }
+
       await updateFormBlock(id, {
         block_type: blockType,
         content: blockContent || undefined,
-        metadata: blockType === 'category_reference' && blockProductCategoryId
-          ? { product_category_id: blockProductCategoryId }
-          : {},
+        metadata,
         show_condition: conditionEnabled ? blockShowCondition : null,
       })
       resetBlockForm()
@@ -255,13 +314,17 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockProductCategoryId(null)
     setBlockShowCondition(null)
     setConditionEnabled(false)
+    setBlockChoiceOptions([])
+    setBlockChoiceDisplay('auto')
+    setBlockChoiceInputMode('manual')
+    setBlockChoiceCategoryId(null)
     setEditingBlockId(null)
   }
 
   const startEditForm = (form: FormSchema) => {
     setFormName(form.name)
     setFormDescription(form.description || '')
-    setFormShootingCategoryId(form.shooting_category_id || null)
+    setFormShootingCategoryId(form.shooting_category_id)
     setFormIsActive(form.is_active)
     setEditingFormId(form.id)
   }
@@ -272,7 +335,34 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockProductCategoryId(block.metadata?.product_category_id || null)
     setBlockShowCondition(block.show_condition || null)
     setConditionEnabled(block.show_condition !== null)
+    setBlockChoiceOptions(block.metadata?.choice_options || [])
+    setBlockChoiceDisplay(block.metadata?.choice_display || 'auto')
+    setBlockChoiceInputMode(block.metadata?.auto_sync_category_id ? 'category' : 'manual')
+    setBlockChoiceCategoryId(block.metadata?.auto_sync_category_id || null)
     setEditingBlockId(block.id)
+  }
+
+  // カテゴリからChoice選択肢を自動生成
+  const handleGenerateChoicesFromCategory = async (categoryId: number) => {
+    try {
+      const items = await getItems(shopId, categoryId)
+      const options: ChoiceOption[] = items.map(item => ({
+        value: `item_${item.id}`,
+        label: item.name,
+        price: item.price,
+        description: item.description || undefined,
+      }))
+      setBlockChoiceOptions(options)
+    } catch (err) {
+      console.error('アイテムの取得に失敗しました:', err)
+      alert('アイテムの取得に失敗しました')
+    }
+  }
+
+  // プレビューモーダルを開く
+  const handleOpenPreview = () => {
+    setPreviewYesNoAnswers(new Map())
+    setShowPreview(true)
   }
 
   const getBlockTypeLabel = (type: BlockType): string => {
@@ -282,7 +372,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
       list: 'リスト', // 非推奨だが、既存データのため残す
       category_reference: 'カテゴリ参照',
       yes_no: 'Yes/No質問',
-      choice: '選択肢（Choice）',
+      choice: '選択肢質問',
     }
     return labels[type]
   }
@@ -394,7 +484,34 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         <p className="text-xs text-blue-600 mt-1">📋 {category.display_name}</p>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          const newStatus = !form.is_active
+                          const action = newStatus ? '公開' : '非公開'
+                          if (!confirm(`「${form.name}」を${action}にしますか？`)) return
+                          try {
+                            await updateFormSchema(form.id, { is_active: newStatus })
+                            await loadData()
+                            if (selectedFormId === form.id) {
+                              await loadFormWithBlocks(selectedFormId)
+                            }
+                            alert(`フォームを${action}にしました`)
+                          } catch (err) {
+                            console.error(err)
+                            alert(`${action}に失敗しました: ` + getErrorMessage(err))
+                          }
+                        }}
+                        className={`text-xs px-2 py-1 rounded ${
+                          form.is_active
+                            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                        title={form.is_active ? '非公開にする' : '公開する'}
+                      >
+                        {form.is_active ? '🔒' : '🚀'}
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -415,11 +532,15 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       </button>
                     </div>
                   </div>
-                  {!form.is_active && (
-                    <span className="inline-block text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                      非アクティブ
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded ${
+                      form.is_active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {form.is_active ? '✅ 公開中' : '⚪ 非公開'}
                     </span>
-                  )}
+                  </div>
                 </div>
               )
             })}
@@ -434,9 +555,38 @@ export default function FormManager({ shopId }: FormManagerProps) {
             </div>
           ) : (
             <>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {selectedForm.name} のブロック管理
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {selectedForm.name} のブロック管理
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleOpenPreview}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
+                  >
+                    👁️ プレビュー
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('フォームの設定を更新しますか？')) return
+                      try {
+                        // Reload to reflect any unsaved changes
+                        await loadData()
+                        if (selectedFormId) {
+                          await loadFormWithBlocks(selectedFormId)
+                        }
+                        alert('フォームを更新しました')
+                      } catch (err) {
+                        console.error(err)
+                        alert('更新に失敗しました: ' + getErrorMessage(err))
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  >
+                    🔄 更新
+                  </button>
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-6">
                 {/* ブロック作成フォーム */}
@@ -455,6 +605,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         <option value="text">テキスト</option>
                         <option value="heading">見出し</option>
                         <option value="yes_no">Yes/No質問</option>
+                        <option value="choice">選択肢質問 (3+ 選択肢)</option>
                         <option value="category_reference">カテゴリ参照</option>
                       </select>
                     </div>
@@ -480,15 +631,202 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       </div>
                     )}
 
+                    {/* Choice ブロック専用UI */}
+                    {blockType === 'choice' && (
+                      <div className="space-y-3 border border-purple-200 rounded-lg p-3 bg-purple-50">
+                        <h5 className="font-medium text-purple-900 text-sm">選択肢設定</h5>
+
+                        {/* 選択肢の入力方法 */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">選択肢の入力方法</label>
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="choiceInputMode"
+                                value="manual"
+                                checked={blockChoiceInputMode === 'manual'}
+                                onChange={(e) => setBlockChoiceInputMode(e.target.value as 'manual' | 'category')}
+                                className="w-4 h-4 text-purple-600"
+                              />
+                              <span className="text-sm">手動入力</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="choiceInputMode"
+                                value="category"
+                                checked={blockChoiceInputMode === 'category'}
+                                onChange={(e) => setBlockChoiceInputMode(e.target.value as 'manual' | 'category')}
+                                className="w-4 h-4 text-purple-600"
+                              />
+                              <span className="text-sm">商品カテゴリから自動生成</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* カテゴリ連動モードの場合 */}
+                        {blockChoiceInputMode === 'category' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              商品カテゴリ <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={blockChoiceCategoryId || ''}
+                              onChange={async (e) => {
+                                const categoryId = e.target.value ? Number(e.target.value) : null
+                                setBlockChoiceCategoryId(categoryId)
+                                if (categoryId) {
+                                  await handleGenerateChoicesFromCategory(categoryId)
+                                }
+                              }}
+                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                              required
+                            >
+                              <option value="">選択してください</option>
+                              {productCategories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.display_name} ({cat.items?.length || 0}個のアイテム)
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              ※カテゴリのアイテムが更新されると、選択肢も自動的に更新されます
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 表示方式選択 */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">表示方式</label>
+                          <select
+                            value={blockChoiceDisplay}
+                            onChange={(e) => setBlockChoiceDisplay(e.target.value as 'radio' | 'select' | 'auto')}
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                          >
+                            <option value="auto">自動判定（2-3個: ラジオ、4個以上: ドロップダウン）</option>
+                            <option value="radio">ラジオボタン</option>
+                            <option value="select">ドロップダウン</option>
+                          </select>
+                        </div>
+
+                        {/* 選択肢一覧 */}
+                        {blockChoiceOptions.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">選択肢一覧</label>
+                            <div className="space-y-2">
+                              {blockChoiceOptions.map((option, index) => (
+                                <div key={index} className="bg-white border border-gray-300 rounded p-2 text-xs">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-800">{option.label}</div>
+                                      <div className="text-gray-600 mt-1">
+                                        <span className="font-mono bg-gray-100 px-1 rounded">value: {option.value}</span>
+                                        <span className="ml-2 font-semibold text-purple-600">
+                                          {option.price > 0 ? `+${option.price.toLocaleString()}円` : '0円'}
+                                        </span>
+                                      </div>
+                                      {option.description && (
+                                        <div className="text-gray-500 mt-1">{option.description}</div>
+                                      )}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setBlockChoiceOptions(prev => prev.filter((_, i) => i !== index))
+                                      }}
+                                      className="text-red-600 hover:text-red-700 ml-2"
+                                    >
+                                      削除
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 選択肢追加フォーム（手動入力モードのみ） */}
+                        {blockChoiceInputMode === 'manual' && (
+                        <div className="border-t border-purple-200 pt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">新しい選択肢を追加</label>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="内部値 (例: light_plan)"
+                              id="new-choice-value"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="text"
+                              placeholder="表示テキスト (例: ライトコース)"
+                              id="new-choice-label"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="number"
+                              placeholder="料金（税込、円）"
+                              id="new-choice-price"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="1"
+                            />
+                            <input
+                              type="text"
+                              placeholder="説明（オプション）"
+                              id="new-choice-description"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const valueInput = document.getElementById('new-choice-value') as HTMLInputElement
+                                const labelInput = document.getElementById('new-choice-label') as HTMLInputElement
+                                const priceInput = document.getElementById('new-choice-price') as HTMLInputElement
+                                const descInput = document.getElementById('new-choice-description') as HTMLInputElement
+
+                                const value = valueInput?.value.trim()
+                                const label = labelInput?.value.trim()
+                                const price = parseInt(priceInput?.value || '0')
+                                const description = descInput?.value.trim()
+
+                                if (!value || !label) {
+                                  alert('内部値と表示テキストは必須です')
+                                  return
+                                }
+
+                                setBlockChoiceOptions(prev => [...prev, {
+                                  value,
+                                  label,
+                                  price: price || 0,
+                                  description: description || undefined,
+                                }])
+
+                                // フォームをクリア
+                                if (valueInput) valueInput.value = ''
+                                if (labelInput) labelInput.value = ''
+                                if (priceInput) priceInput.value = ''
+                                if (descInput) descInput.value = ''
+                              }}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm font-medium"
+                            >
+                              ＋ 選択肢を追加
+                            </button>
+                          </div>
+                        </div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        内容 {blockType !== 'category_reference' && <span className="text-red-500">*</span>}
+                        内容 {blockType !== 'category_reference' && blockType !== 'choice' && <span className="text-red-500">*</span>}
                       </label>
                       <textarea
                         value={blockContent}
                         onChange={(e) => setBlockContent(e.target.value)}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                        rows={blockType === 'yes_no' ? 2 : 6}
+                        rows={blockType === 'yes_no' || blockType === 'choice' ? 2 : 6}
                         placeholder={
                           blockType === 'heading'
                             ? '## 見出しテキスト'
@@ -496,14 +834,17 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             ? '説明テキスト（任意）'
                             : blockType === 'yes_no'
                             ? 'ご家族の支度はありますか？'
+                            : blockType === 'choice'
+                            ? '撮影プランをお選びください'
                             : 'テキストを入力'
                         }
                         required={blockType !== 'category_reference'}
                       />
                     </div>
 
-                    {/* 条件設定 (Yes/Noブロック以外で設定可能) */}
-                    {blockType !== 'yes_no' && selectedForm && selectedForm.blocks.some(b => b.block_type === 'yes_no') && (
+                    {/* 条件設定 (Yes/No/Choiceブロック以外で設定可能) */}
+                    {blockType !== 'yes_no' && blockType !== 'choice' && selectedForm &&
+                     selectedForm.blocks.some(b => b.block_type === 'yes_no' || b.block_type === 'choice') && (
                       <div className="border-t border-gray-200 pt-3">
                         <label className="flex items-center gap-2 mb-2">
                           <input
@@ -529,11 +870,30 @@ export default function FormManager({ shopId }: FormManagerProps) {
                                 onChange={(e) => {
                                   const blockId = e.target.value ? Number(e.target.value) : null
                                   if (blockId) {
-                                    setBlockShowCondition({
-                                      type: 'yes_no',
-                                      block_id: blockId,
-                                      value: blockShowCondition?.value || 'yes'
-                                    })
+                                    const sourceBlock = selectedForm.blocks.find(b => b.id === blockId)
+                                    if (sourceBlock) {
+                                      let defaultValue = ''
+                                      if (sourceBlock.block_type === 'yes_no') {
+                                        defaultValue = 'yes'
+                                      } else if (sourceBlock.block_type === 'choice') {
+                                        // カテゴリ連動モードの場合、カテゴリのアイテムから取得
+                                        if (sourceBlock.metadata?.auto_sync_category_id) {
+                                          const category = productCategories.find(
+                                            (pc) => pc.id === sourceBlock.metadata.auto_sync_category_id
+                                          )
+                                          if (category && category.items && category.items.length > 0) {
+                                            defaultValue = `item_${category.items[0].id}`
+                                          }
+                                        } else {
+                                          defaultValue = sourceBlock.metadata?.choice_options?.[0]?.value || ''
+                                        }
+                                      }
+                                      setBlockShowCondition({
+                                        type: sourceBlock.block_type as 'yes_no' | 'choice',
+                                        block_id: blockId,
+                                        value: defaultValue
+                                      })
+                                    }
                                   }
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
@@ -541,32 +901,81 @@ export default function FormManager({ shopId }: FormManagerProps) {
                               >
                                 <option value="">選択してください</option>
                                 {selectedForm.blocks
-                                  .filter(b => b.block_type === 'yes_no')
+                                  .filter(b => b.block_type === 'yes_no' || b.block_type === 'choice')
                                   .map(b => (
                                     <option key={b.id} value={b.id}>
-                                      {b.content || `ブロック ${b.id}`}
+                                      [{b.block_type === 'yes_no' ? 'Yes/No' : '選択肢'}] {b.content || `ブロック ${b.id}`}
                                     </option>
                                   ))}
                               </select>
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">表示条件</label>
-                              <select
-                                value={blockShowCondition?.value || 'yes'}
-                                onChange={(e) => {
-                                  if (blockShowCondition) {
-                                    setBlockShowCondition({
-                                      ...blockShowCondition,
-                                      value: e.target.value as 'yes' | 'no'
-                                    })
+                            {blockShowCondition && (
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">表示条件</label>
+                                {(() => {
+                                  const sourceBlock = selectedForm.blocks.find(b => b.id === blockShowCondition.block_id)
+                                  if (!sourceBlock) return null
+
+                                  if (sourceBlock.block_type === 'yes_no') {
+                                    return (
+                                      <select
+                                        value={blockShowCondition.value}
+                                        onChange={(e) => {
+                                          setBlockShowCondition({
+                                            ...blockShowCondition,
+                                            value: e.target.value
+                                          })
+                                        }}
+                                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                      >
+                                        <option value="yes">「はい」の場合に表示</option>
+                                        <option value="no">「いいえ」の場合に表示</option>
+                                      </select>
+                                    )
+                                  } else if (sourceBlock.block_type === 'choice') {
+                                    // カテゴリ連動モードの場合、カテゴリのアイテムから選択肢を生成
+                                    let options = sourceBlock.metadata?.choice_options || []
+                                    if (sourceBlock.metadata?.auto_sync_category_id) {
+                                      const category = productCategories.find(
+                                        (pc) => pc.id === sourceBlock.metadata.auto_sync_category_id
+                                      )
+                                      if (category && category.items) {
+                                        options = category.items.map((item: Item) => ({
+                                          value: `item_${item.id}`,
+                                          label: item.name,
+                                          price: item.price,
+                                          description: item.description || undefined,
+                                        }))
+                                      }
+                                    }
+
+                                    if (options.length === 0) {
+                                      return <p className="text-xs text-gray-500">選択肢がありません</p>
+                                    }
+
+                                    return (
+                                      <select
+                                        value={blockShowCondition.value}
+                                        onChange={(e) => {
+                                          setBlockShowCondition({
+                                            ...blockShowCondition,
+                                            value: e.target.value
+                                          })
+                                        }}
+                                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                      >
+                                        {options.map(opt => (
+                                          <option key={opt.value} value={opt.value}>
+                                            「{opt.label}」の場合に表示
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )
                                   }
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                              >
-                                <option value="yes">「はい」の場合に表示</option>
-                                <option value="no">「いいえ」の場合に表示</option>
-                              </select>
-                            </div>
+                                  return null
+                                })()}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -609,12 +1018,19 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     <p className="text-sm text-gray-500">ブロックがまだありません</p>
                   ) : (
                     <div className="space-y-2">
-                      {selectedForm.blocks.map((block, index) => (
+                      {selectedForm.blocks.map((block, index) => {
+                        // カテゴリ参照ブロックの場合、選択されているカテゴリ名を取得
+                        const categoryName = block.block_type === 'category_reference' && block.metadata?.product_category_id
+                          ? productCategories.find(cat => cat.id === block.metadata.product_category_id)?.display_name || '不明なカテゴリ'
+                          : null
+
+                        return (
                         <div key={block.id} className="border border-gray-200 rounded p-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded mb-1">
                                 {getBlockTypeLabel(block.block_type)}
+                                {categoryName && ` : ${categoryName}`}
                               </span>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                                 {block.content || '(内容なし)'}
@@ -652,7 +1068,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -661,6 +1078,145 @@ export default function FormManager({ shopId }: FormManagerProps) {
           )}
         </div>
       </div>
+
+      {/* プレビューモーダル */}
+      {showPreview && selectedForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                📋 {selectedForm.name} - プレビュー
+              </h3>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              {selectedForm.description && (
+                <p className="text-sm text-gray-600 mb-4">{selectedForm.description}</p>
+              )}
+
+              <div className="space-y-4">
+                {selectedForm.blocks.map((block) => {
+                  // 表示条件のチェック
+                  if (block.show_condition) {
+                    const requiredAnswer = previewYesNoAnswers.get(block.show_condition.block_id)
+                    if (requiredAnswer !== block.show_condition.value) {
+                      return null
+                    }
+                  }
+
+                  // 見出しブロック
+                  if (block.block_type === 'heading') {
+                    return (
+                      <div key={block.id}>
+                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">
+                          {block.content?.replace(/^##\s*/, '')}
+                        </h2>
+                      </div>
+                    )
+                  }
+
+                  // テキストブロック
+                  if (block.block_type === 'text') {
+                    return (
+                      <div key={block.id} className="text-gray-700">
+                        {block.content}
+                      </div>
+                    )
+                  }
+
+                  // Yes/No質問ブロック
+                  if (block.block_type === 'yes_no') {
+                    const answer = previewYesNoAnswers.get(block.id)
+                    return (
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4">
+                        <p className="text-sm font-medium text-gray-800 mb-3">{block.content}</p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              const newAnswers = new Map(previewYesNoAnswers)
+                              newAnswers.set(block.id, 'yes')
+                              setPreviewYesNoAnswers(newAnswers)
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              answer === 'yes'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            はい
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newAnswers = new Map(previewYesNoAnswers)
+                              newAnswers.set(block.id, 'no')
+                              setPreviewYesNoAnswers(newAnswers)
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              answer === 'no'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            いいえ
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // カテゴリ参照ブロック
+                  if (block.block_type === 'category_reference') {
+                    const productCategory = productCategories.find(
+                      (pc) => pc.id === block.metadata?.product_category_id
+                    )
+
+                    if (!productCategory) {
+                      return (
+                        <div key={block.id} className="text-sm text-red-600">
+                          カテゴリが見つかりません (ID: {block.metadata?.product_category_id})
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div key={block.id}>
+                        {block.content && (
+                          <p className="text-sm text-gray-600 mb-2">{block.content}</p>
+                        )}
+                        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-300">
+                            {productCategory.display_name}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            ※ プレビューでは実際のアイテムは表示されません
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return null
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
