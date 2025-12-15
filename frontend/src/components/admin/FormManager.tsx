@@ -10,7 +10,7 @@ import {
   deleteFormBlock,
   updateBlocksOrder,
 } from '../../services/formBuilderService'
-import { getShootingCategories, getProductCategories } from '../../services/categoryService'
+import { getShootingCategories, getProductCategories, getItems } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
 import type { ShootingCategory } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
@@ -45,6 +45,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
   // Choice ブロック専用の状態
   const [blockChoiceOptions, setBlockChoiceOptions] = useState<ChoiceOption[]>([])
   const [blockChoiceDisplay, setBlockChoiceDisplay] = useState<'radio' | 'select' | 'auto'>('auto')
+  const [blockChoiceInputMode, setBlockChoiceInputMode] = useState<'manual' | 'category'>('manual')
+  const [blockChoiceCategoryId, setBlockChoiceCategoryId] = useState<number | null>(null)
 
   // プレビューモーダル
   const [showPreview, setShowPreview] = useState(false)
@@ -159,9 +161,18 @@ export default function FormManager({ shopId }: FormManagerProps) {
       if (blockType === 'category_reference' && blockProductCategoryId) {
         metadata = { product_category_id: blockProductCategoryId }
       } else if (blockType === 'choice') {
-        metadata = {
-          choice_options: blockChoiceOptions,
-          choice_display: blockChoiceDisplay,
+        if (blockChoiceInputMode === 'category' && blockChoiceCategoryId) {
+          // カテゴリ連動モード
+          metadata = {
+            auto_sync_category_id: blockChoiceCategoryId,
+            choice_display: blockChoiceDisplay,
+          }
+        } else {
+          // 手動入力モード
+          metadata = {
+            choice_options: blockChoiceOptions,
+            choice_display: blockChoiceDisplay,
+          }
         }
       }
 
@@ -189,9 +200,18 @@ export default function FormManager({ shopId }: FormManagerProps) {
       if (blockType === 'category_reference' && blockProductCategoryId) {
         metadata = { product_category_id: blockProductCategoryId }
       } else if (blockType === 'choice') {
-        metadata = {
-          choice_options: blockChoiceOptions,
-          choice_display: blockChoiceDisplay,
+        if (blockChoiceInputMode === 'category' && blockChoiceCategoryId) {
+          // カテゴリ連動モード
+          metadata = {
+            auto_sync_category_id: blockChoiceCategoryId,
+            choice_display: blockChoiceDisplay,
+          }
+        } else {
+          // 手動入力モード
+          metadata = {
+            choice_options: blockChoiceOptions,
+            choice_display: blockChoiceDisplay,
+          }
         }
       }
 
@@ -284,6 +304,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setConditionEnabled(false)
     setBlockChoiceOptions([])
     setBlockChoiceDisplay('auto')
+    setBlockChoiceInputMode('manual')
+    setBlockChoiceCategoryId(null)
     setEditingBlockId(null)
   }
 
@@ -303,7 +325,26 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setConditionEnabled(block.show_condition !== null)
     setBlockChoiceOptions(block.metadata?.choice_options || [])
     setBlockChoiceDisplay(block.metadata?.choice_display || 'auto')
+    setBlockChoiceInputMode(block.metadata?.auto_sync_category_id ? 'category' : 'manual')
+    setBlockChoiceCategoryId(block.metadata?.auto_sync_category_id || null)
     setEditingBlockId(block.id)
+  }
+
+  // カテゴリからChoice選択肢を自動生成
+  const handleGenerateChoicesFromCategory = async (categoryId: number) => {
+    try {
+      const items = await getItems(shopId, categoryId)
+      const options: ChoiceOption[] = items.map(item => ({
+        value: `item_${item.id}`,
+        label: item.name,
+        price: item.price,
+        description: item.description || undefined,
+      }))
+      setBlockChoiceOptions(options)
+    } catch (err) {
+      console.error('アイテムの取得に失敗しました:', err)
+      alert('アイテムの取得に失敗しました')
+    }
   }
 
   // プレビューモーダルを開く
@@ -583,6 +624,66 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       <div className="space-y-3 border border-purple-200 rounded-lg p-3 bg-purple-50">
                         <h5 className="font-medium text-purple-900 text-sm">選択肢設定</h5>
 
+                        {/* 選択肢の入力方法 */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">選択肢の入力方法</label>
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="choiceInputMode"
+                                value="manual"
+                                checked={blockChoiceInputMode === 'manual'}
+                                onChange={(e) => setBlockChoiceInputMode(e.target.value as 'manual' | 'category')}
+                                className="w-4 h-4 text-purple-600"
+                              />
+                              <span className="text-sm">手動入力</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="choiceInputMode"
+                                value="category"
+                                checked={blockChoiceInputMode === 'category'}
+                                onChange={(e) => setBlockChoiceInputMode(e.target.value as 'manual' | 'category')}
+                                className="w-4 h-4 text-purple-600"
+                              />
+                              <span className="text-sm">商品カテゴリから自動生成</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* カテゴリ連動モードの場合 */}
+                        {blockChoiceInputMode === 'category' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              商品カテゴリ <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={blockChoiceCategoryId || ''}
+                              onChange={async (e) => {
+                                const categoryId = e.target.value ? Number(e.target.value) : null
+                                setBlockChoiceCategoryId(categoryId)
+                                if (categoryId) {
+                                  await handleGenerateChoicesFromCategory(categoryId)
+                                }
+                              }}
+                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                              required
+                            >
+                              <option value="">選択してください</option>
+                              {productCategories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.display_name} ({cat.items?.length || 0}個のアイテム)
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              ※カテゴリのアイテムが更新されると、選択肢も自動的に更新されます
+                            </p>
+                          </div>
+                        )}
+
                         {/* 表示方式選択 */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">表示方式</label>
@@ -633,7 +734,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
                           </div>
                         )}
 
-                        {/* 選択肢追加フォーム */}
+                        {/* 選択肢追加フォーム（手動入力モードのみ） */}
+                        {blockChoiceInputMode === 'manual' && (
                         <div className="border-t border-purple-200 pt-3">
                           <label className="block text-sm font-medium text-gray-700 mb-2">新しい選択肢を追加</label>
                           <div className="space-y-2">
@@ -700,6 +802,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             </button>
                           </div>
                         </div>
+                        )}
                       </div>
                     )}
 
