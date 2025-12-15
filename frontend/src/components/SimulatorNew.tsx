@@ -20,6 +20,8 @@ export default function SimulatorNew() {
     Array<Item & { shooting_category_id: number }>
   >([])
   const [formSchema, setFormSchema] = useState<FormSchemaWithBlocks | null>(null)
+  // Yes/No answers: Map<block_id, 'yes' | 'no' | null>
+  const [yesNoAnswers, setYesNoAnswers] = useState<Map<number, 'yes' | 'no' | null>>(new Map())
 
   useEffect(() => {
     loadData()
@@ -200,6 +202,58 @@ export default function SimulatorNew() {
             {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block) => {
+                  // Check show_condition
+                  if (block.show_condition) {
+                    const answer = yesNoAnswers.get(block.show_condition.block_id)
+                    if (answer !== block.show_condition.value) {
+                      return null // Don't show this block
+                    }
+                  }
+
+                  // Yes/No block
+                  if (block.block_type === 'yes_no') {
+                    const currentAnswer = yesNoAnswers.get(block.id)
+                    return (
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4 bg-white">
+                        <p className="text-gray-800 font-medium mb-3">{block.content}</p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              setYesNoAnswers(prev => {
+                                const newMap = new Map(prev)
+                                newMap.set(block.id, 'yes')
+                                return newMap
+                              })
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                              currentAnswer === 'yes'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            はい
+                          </button>
+                          <button
+                            onClick={() => {
+                              setYesNoAnswers(prev => {
+                                const newMap = new Map(prev)
+                                newMap.set(block.id, 'no')
+                                return newMap
+                              })
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                              currentAnswer === 'no'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            いいえ
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  }
+
                   // Heading block
                   if (block.block_type === 'heading') {
                     return (

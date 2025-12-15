@@ -14,7 +14,14 @@ export interface FormSchema {
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
-export type BlockType = 'text' | 'heading' | 'list' | 'category_reference'
+export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no'
+
+// Condition for conditional block display
+export interface ShowCondition {
+  type: 'yes_no'
+  block_id: number
+  value: 'yes' | 'no'
+}
 
 export interface FormBlock {
   id: number
@@ -26,6 +33,7 @@ export interface FormBlock {
     product_category_id?: number
     display_mode?: 'expanded' | 'collapsed'
   }
+  show_condition: ShowCondition | null
   created_at: string
   updated_at: string
 }
@@ -173,6 +181,7 @@ export interface CreateFormBlock {
     product_category_id?: number
     display_mode?: 'expanded' | 'collapsed'
   }
+  show_condition?: ShowCondition | null
 }
 
 export interface UpdateFormBlock {
@@ -183,4 +192,5 @@ export interface UpdateFormBlock {
     product_category_id?: number
     display_mode?: 'expanded' | 'collapsed'
   }
+  show_condition?: ShowCondition | null
 }

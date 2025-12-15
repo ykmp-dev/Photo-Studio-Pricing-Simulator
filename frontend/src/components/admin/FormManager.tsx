@@ -11,7 +11,7 @@ import {
   updateBlocksOrder,
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories } from '../../services/categoryService'
-import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks } from '../../types/formBuilder'
+import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition } from '../../types/formBuilder'
 import type { ShootingCategory } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
@@ -39,6 +39,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [blockType, setBlockType] = useState<BlockType>('text')
   const [blockContent, setBlockContent] = useState('')
   const [blockProductCategoryId, setBlockProductCategoryId] = useState<number | null>(null)
+  const [blockShowCondition, setBlockShowCondition] = useState<ShowCondition | null>(null)
+  const [conditionEnabled, setConditionEnabled] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -147,6 +149,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
         metadata: blockType === 'category_reference' && blockProductCategoryId
           ? { product_category_id: blockProductCategoryId }
           : {},
+        show_condition: conditionEnabled ? blockShowCondition : null,
       })
       resetBlockForm()
       await loadFormWithBlocks(selectedFormId)
@@ -165,6 +168,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
         metadata: blockType === 'category_reference' && blockProductCategoryId
           ? { product_category_id: blockProductCategoryId }
           : {},
+        show_condition: conditionEnabled ? blockShowCondition : null,
       })
       resetBlockForm()
       if (selectedFormId) {
@@ -245,6 +249,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockType('text')
     setBlockContent('')
     setBlockProductCategoryId(null)
+    setBlockShowCondition(null)
+    setConditionEnabled(false)
     setEditingBlockId(null)
   }
 
@@ -260,6 +266,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockType(block.block_type)
     setBlockContent(block.content || '')
     setBlockProductCategoryId(block.metadata?.product_category_id || null)
+    setBlockShowCondition(block.show_condition || null)
+    setConditionEnabled(block.show_condition !== null)
     setEditingBlockId(block.id)
   }
 
@@ -269,6 +277,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
       heading: '見出し',
       list: 'リスト', // 非推奨だが、既存データのため残す
       category_reference: 'カテゴリ参照',
+      yes_no: 'Yes/No質問',
     }
     return labels[type]
   }
@@ -440,6 +449,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       >
                         <option value="text">テキスト</option>
                         <option value="heading">見出し</option>
+                        <option value="yes_no">Yes/No質問</option>
                         <option value="category_reference">カテゴリ参照</option>
                       </select>
                     </div>
@@ -473,17 +483,89 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         value={blockContent}
                         onChange={(e) => setBlockContent(e.target.value)}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                        rows={6}
+                        rows={blockType === 'yes_no' ? 2 : 6}
                         placeholder={
                           blockType === 'heading'
                             ? '## 見出しテキスト'
                             : blockType === 'category_reference'
                             ? '説明テキスト（任意）'
+                            : blockType === 'yes_no'
+                            ? 'ご家族の支度はありますか？'
                             : 'テキストを入力'
                         }
                         required={blockType !== 'category_reference'}
                       />
                     </div>
+
+                    {/* 条件設定 (Yes/Noブロック以外で設定可能) */}
+                    {blockType !== 'yes_no' && selectedForm && selectedForm.blocks.some(b => b.block_type === 'yes_no') && (
+                      <div className="border-t border-gray-200 pt-3">
+                        <label className="flex items-center gap-2 mb-2">
+                          <input
+                            type="checkbox"
+                            checked={conditionEnabled}
+                            onChange={(e) => {
+                              setConditionEnabled(e.target.checked)
+                              if (!e.target.checked) {
+                                setBlockShowCondition(null)
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <span className="text-sm font-medium text-gray-700">表示条件を設定</span>
+                        </label>
+
+                        {conditionEnabled && (
+                          <div className="space-y-2 ml-6">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">条件元ブロック</label>
+                              <select
+                                value={blockShowCondition?.block_id || ''}
+                                onChange={(e) => {
+                                  const blockId = e.target.value ? Number(e.target.value) : null
+                                  if (blockId) {
+                                    setBlockShowCondition({
+                                      type: 'yes_no',
+                                      block_id: blockId,
+                                      value: blockShowCondition?.value || 'yes'
+                                    })
+                                  }
+                                }}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                required={conditionEnabled}
+                              >
+                                <option value="">選択してください</option>
+                                {selectedForm.blocks
+                                  .filter(b => b.block_type === 'yes_no')
+                                  .map(b => (
+                                    <option key={b.id} value={b.id}>
+                                      {b.content || `ブロック ${b.id}`}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">表示条件</label>
+                              <select
+                                value={blockShowCondition?.value || 'yes'}
+                                onChange={(e) => {
+                                  if (blockShowCondition) {
+                                    setBlockShowCondition({
+                                      ...blockShowCondition,
+                                      value: e.target.value as 'yes' | 'no'
+                                    })
+                                  }
+                                }}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                              >
+                                <option value="yes">「はい」の場合に表示</option>
+                                <option value="no">「いいえ」の場合に表示</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex gap-2">
                       {editingBlockId ? (
