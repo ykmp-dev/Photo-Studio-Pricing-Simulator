@@ -11,7 +11,7 @@ import {
   updateBlocksOrder,
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories } from '../../services/categoryService'
-import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition } from '../../types/formBuilder'
+import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
 import type { ShootingCategory } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
@@ -41,6 +41,10 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [blockProductCategoryId, setBlockProductCategoryId] = useState<number | null>(null)
   const [blockShowCondition, setBlockShowCondition] = useState<ShowCondition | null>(null)
   const [conditionEnabled, setConditionEnabled] = useState(false)
+
+  // Choice ブロック専用の状態
+  const [blockChoiceOptions, setBlockChoiceOptions] = useState<ChoiceOption[]>([])
+  const [blockChoiceDisplay, setBlockChoiceDisplay] = useState<'radio' | 'select' | 'auto'>('auto')
 
   // プレビューモーダル
   const [showPreview, setShowPreview] = useState(false)
@@ -150,13 +154,22 @@ export default function FormManager({ shopId }: FormManagerProps) {
       const maxSortOrder = selectedForm?.blocks.reduce((max, block) =>
         Math.max(max, block.sort_order), -1) ?? -1
 
+      // メタデータの構築
+      let metadata: any = {}
+      if (blockType === 'category_reference' && blockProductCategoryId) {
+        metadata = { product_category_id: blockProductCategoryId }
+      } else if (blockType === 'choice') {
+        metadata = {
+          choice_options: blockChoiceOptions,
+          choice_display: blockChoiceDisplay,
+        }
+      }
+
       await createFormBlock({
         form_schema_id: selectedFormId,
         block_type: blockType,
         content: blockContent || undefined,
-        metadata: blockType === 'category_reference' && blockProductCategoryId
-          ? { product_category_id: blockProductCategoryId }
-          : {},
+        metadata,
         show_condition: conditionEnabled ? blockShowCondition : null,
         sort_order: maxSortOrder + 1,
       })
@@ -171,12 +184,21 @@ export default function FormManager({ shopId }: FormManagerProps) {
 
   const handleUpdateBlock = async (id: number) => {
     try {
+      // メタデータの構築
+      let metadata: any = {}
+      if (blockType === 'category_reference' && blockProductCategoryId) {
+        metadata = { product_category_id: blockProductCategoryId }
+      } else if (blockType === 'choice') {
+        metadata = {
+          choice_options: blockChoiceOptions,
+          choice_display: blockChoiceDisplay,
+        }
+      }
+
       await updateFormBlock(id, {
         block_type: blockType,
         content: blockContent || undefined,
-        metadata: blockType === 'category_reference' && blockProductCategoryId
-          ? { product_category_id: blockProductCategoryId }
-          : {},
+        metadata,
         show_condition: conditionEnabled ? blockShowCondition : null,
       })
       resetBlockForm()
@@ -260,6 +282,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockProductCategoryId(null)
     setBlockShowCondition(null)
     setConditionEnabled(false)
+    setBlockChoiceOptions([])
+    setBlockChoiceDisplay('auto')
     setEditingBlockId(null)
   }
 
@@ -277,6 +301,8 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setBlockProductCategoryId(block.metadata?.product_category_id || null)
     setBlockShowCondition(block.show_condition || null)
     setConditionEnabled(block.show_condition !== null)
+    setBlockChoiceOptions(block.metadata?.choice_options || [])
+    setBlockChoiceDisplay(block.metadata?.choice_display || 'auto')
     setEditingBlockId(block.id)
   }
 
@@ -526,6 +552,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         <option value="text">テキスト</option>
                         <option value="heading">見出し</option>
                         <option value="yes_no">Yes/No質問</option>
+                        <option value="choice">選択肢質問 (3+ 選択肢)</option>
                         <option value="category_reference">カテゴリ参照</option>
                       </select>
                     </div>
@@ -551,15 +578,140 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       </div>
                     )}
 
+                    {/* Choice ブロック専用UI */}
+                    {blockType === 'choice' && (
+                      <div className="space-y-3 border border-purple-200 rounded-lg p-3 bg-purple-50">
+                        <h5 className="font-medium text-purple-900 text-sm">選択肢設定</h5>
+
+                        {/* 表示方式選択 */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">表示方式</label>
+                          <select
+                            value={blockChoiceDisplay}
+                            onChange={(e) => setBlockChoiceDisplay(e.target.value as 'radio' | 'select' | 'auto')}
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                          >
+                            <option value="auto">自動判定（2-3個: ラジオ、4個以上: ドロップダウン）</option>
+                            <option value="radio">ラジオボタン</option>
+                            <option value="select">ドロップダウン</option>
+                          </select>
+                        </div>
+
+                        {/* 選択肢一覧 */}
+                        {blockChoiceOptions.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">選択肢一覧</label>
+                            <div className="space-y-2">
+                              {blockChoiceOptions.map((option, index) => (
+                                <div key={index} className="bg-white border border-gray-300 rounded p-2 text-xs">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-800">{option.label}</div>
+                                      <div className="text-gray-600 mt-1">
+                                        <span className="font-mono bg-gray-100 px-1 rounded">value: {option.value}</span>
+                                        <span className="ml-2 font-semibold text-purple-600">
+                                          {option.price > 0 ? `+${option.price.toLocaleString()}円` : '0円'}
+                                        </span>
+                                      </div>
+                                      {option.description && (
+                                        <div className="text-gray-500 mt-1">{option.description}</div>
+                                      )}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setBlockChoiceOptions(prev => prev.filter((_, i) => i !== index))
+                                      }}
+                                      className="text-red-600 hover:text-red-700 ml-2"
+                                    >
+                                      削除
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 選択肢追加フォーム */}
+                        <div className="border-t border-purple-200 pt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">新しい選択肢を追加</label>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="内部値 (例: light_plan)"
+                              id="new-choice-value"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="text"
+                              placeholder="表示テキスト (例: ライトコース)"
+                              id="new-choice-label"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="number"
+                              placeholder="料金（税込、円）"
+                              id="new-choice-price"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="1"
+                            />
+                            <input
+                              type="text"
+                              placeholder="説明（オプション）"
+                              id="new-choice-description"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const valueInput = document.getElementById('new-choice-value') as HTMLInputElement
+                                const labelInput = document.getElementById('new-choice-label') as HTMLInputElement
+                                const priceInput = document.getElementById('new-choice-price') as HTMLInputElement
+                                const descInput = document.getElementById('new-choice-description') as HTMLInputElement
+
+                                const value = valueInput?.value.trim()
+                                const label = labelInput?.value.trim()
+                                const price = parseInt(priceInput?.value || '0')
+                                const description = descInput?.value.trim()
+
+                                if (!value || !label) {
+                                  alert('内部値と表示テキストは必須です')
+                                  return
+                                }
+
+                                setBlockChoiceOptions(prev => [...prev, {
+                                  value,
+                                  label,
+                                  price: price || 0,
+                                  description: description || undefined,
+                                }])
+
+                                // フォームをクリア
+                                if (valueInput) valueInput.value = ''
+                                if (labelInput) labelInput.value = ''
+                                if (priceInput) priceInput.value = ''
+                                if (descInput) descInput.value = ''
+                              }}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm font-medium"
+                            >
+                              ＋ 選択肢を追加
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        内容 {blockType !== 'category_reference' && <span className="text-red-500">*</span>}
+                        内容 {blockType !== 'category_reference' && blockType !== 'choice' && <span className="text-red-500">*</span>}
                       </label>
                       <textarea
                         value={blockContent}
                         onChange={(e) => setBlockContent(e.target.value)}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                        rows={blockType === 'yes_no' ? 2 : 6}
+                        rows={blockType === 'yes_no' || blockType === 'choice' ? 2 : 6}
                         placeholder={
                           blockType === 'heading'
                             ? '## 見出しテキスト'
@@ -567,14 +719,17 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             ? '説明テキスト（任意）'
                             : blockType === 'yes_no'
                             ? 'ご家族の支度はありますか？'
+                            : blockType === 'choice'
+                            ? '撮影プランをお選びください'
                             : 'テキストを入力'
                         }
                         required={blockType !== 'category_reference'}
                       />
                     </div>
 
-                    {/* 条件設定 (Yes/Noブロック以外で設定可能) */}
-                    {blockType !== 'yes_no' && selectedForm && selectedForm.blocks.some(b => b.block_type === 'yes_no') && (
+                    {/* 条件設定 (Yes/No/Choiceブロック以外で設定可能) */}
+                    {blockType !== 'yes_no' && blockType !== 'choice' && selectedForm &&
+                     selectedForm.blocks.some(b => b.block_type === 'yes_no' || b.block_type === 'choice') && (
                       <div className="border-t border-gray-200 pt-3">
                         <label className="flex items-center gap-2 mb-2">
                           <input
@@ -600,11 +755,16 @@ export default function FormManager({ shopId }: FormManagerProps) {
                                 onChange={(e) => {
                                   const blockId = e.target.value ? Number(e.target.value) : null
                                   if (blockId) {
-                                    setBlockShowCondition({
-                                      type: 'yes_no',
-                                      block_id: blockId,
-                                      value: blockShowCondition?.value || 'yes'
-                                    })
+                                    const sourceBlock = selectedForm.blocks.find(b => b.id === blockId)
+                                    if (sourceBlock) {
+                                      setBlockShowCondition({
+                                        type: sourceBlock.block_type as 'yes_no' | 'choice',
+                                        block_id: blockId,
+                                        value: sourceBlock.block_type === 'yes_no'
+                                          ? 'yes'
+                                          : sourceBlock.metadata?.choice_options?.[0]?.value || ''
+                                      })
+                                    }
                                   }
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
@@ -612,32 +772,62 @@ export default function FormManager({ shopId }: FormManagerProps) {
                               >
                                 <option value="">選択してください</option>
                                 {selectedForm.blocks
-                                  .filter(b => b.block_type === 'yes_no')
+                                  .filter(b => b.block_type === 'yes_no' || b.block_type === 'choice')
                                   .map(b => (
                                     <option key={b.id} value={b.id}>
-                                      {b.content || `ブロック ${b.id}`}
+                                      [{b.block_type === 'yes_no' ? 'Yes/No' : '選択肢'}] {b.content || `ブロック ${b.id}`}
                                     </option>
                                   ))}
                               </select>
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">表示条件</label>
-                              <select
-                                value={blockShowCondition?.value || 'yes'}
-                                onChange={(e) => {
-                                  if (blockShowCondition) {
-                                    setBlockShowCondition({
-                                      ...blockShowCondition,
-                                      value: e.target.value as 'yes' | 'no'
-                                    })
+                            {blockShowCondition && (
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">表示条件</label>
+                                {(() => {
+                                  const sourceBlock = selectedForm.blocks.find(b => b.id === blockShowCondition.block_id)
+                                  if (!sourceBlock) return null
+
+                                  if (sourceBlock.block_type === 'yes_no') {
+                                    return (
+                                      <select
+                                        value={blockShowCondition.value}
+                                        onChange={(e) => {
+                                          setBlockShowCondition({
+                                            ...blockShowCondition,
+                                            value: e.target.value
+                                          })
+                                        }}
+                                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                      >
+                                        <option value="yes">「はい」の場合に表示</option>
+                                        <option value="no">「いいえ」の場合に表示</option>
+                                      </select>
+                                    )
+                                  } else if (sourceBlock.block_type === 'choice') {
+                                    const options = sourceBlock.metadata?.choice_options || []
+                                    return (
+                                      <select
+                                        value={blockShowCondition.value}
+                                        onChange={(e) => {
+                                          setBlockShowCondition({
+                                            ...blockShowCondition,
+                                            value: e.target.value
+                                          })
+                                        }}
+                                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                      >
+                                        {options.map(opt => (
+                                          <option key={opt.value} value={opt.value}>
+                                            「{opt.label}」の場合に表示
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )
                                   }
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                              >
-                                <option value="yes">「はい」の場合に表示</option>
-                                <option value="no">「いいえ」の場合に表示</option>
-                              </select>
-                            </div>
+                                  return null
+                                })()}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
