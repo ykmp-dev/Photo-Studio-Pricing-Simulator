@@ -193,23 +193,25 @@ export default function SimulatorNew() {
                     if (requiredAnswer !== block.show_condition.value) {
                       return null
                     }
-                  }
+                    // show_conditionがある場合は、それだけで表示/非表示が決まるので、
+                    // プログレッシブディスクロージャーは適用しない
+                  } else {
+                    // Progressive disclosure: show_conditionがなく、Yes/Noブロック以外の場合のみ適用
+                    if (block.block_type !== 'yes_no' && block.block_type !== 'heading' && block.block_type !== 'text') {
+                      // このブロックより前のYes/Noブロックで未回答のものがあるか確認
+                      const hasUnansweredYesNo = formSchema.blocks
+                        .slice(0, index)
+                        .some(prevBlock => {
+                          if (prevBlock.block_type === 'yes_no') {
+                            const answer = yesNoAnswers.get(prevBlock.id)
+                            return answer === null || answer === undefined
+                          }
+                          return false
+                        })
 
-                  // Progressive disclosure: Yes/Noブロック以外の場合、前のYes/Noブロックに未回答があれば非表示
-                  if (block.block_type !== 'yes_no' && block.block_type !== 'heading' && block.block_type !== 'text') {
-                    // このブロックより前のYes/Noブロックで未回答のものがあるか確認
-                    const hasUnansweredYesNo = formSchema.blocks
-                      .slice(0, index)
-                      .some(prevBlock => {
-                        if (prevBlock.block_type === 'yes_no') {
-                          const answer = yesNoAnswers.get(prevBlock.id)
-                          return answer === null || answer === undefined
-                        }
-                        return false
-                      })
-
-                    if (hasUnansweredYesNo) {
-                      return null // 前のYes/No質問に答えていない場合は非表示
+                      if (hasUnansweredYesNo) {
+                        return null // 前のYes/No質問に答えていない場合は非表示
+                      }
                     }
                   }
 
