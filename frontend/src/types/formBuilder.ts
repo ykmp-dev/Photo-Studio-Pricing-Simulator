@@ -81,6 +81,7 @@ export interface CreateFormSchema {
   name: string
   category?: string
   description?: string
+  shooting_category_id?: number
   is_active?: boolean
   sort_order?: number
 }
@@ -89,6 +90,7 @@ export interface UpdateFormSchema {
   name?: string
   category?: string
   description?: string
+  shooting_category_id?: number
   is_active?: boolean
   sort_order?: number
 }
