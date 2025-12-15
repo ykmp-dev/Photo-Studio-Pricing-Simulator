@@ -5,7 +5,7 @@ import type { FormSchemaWithBlocks } from '../types/formBuilder'
 import { calculateSimulatorPrice } from '../services/simulatorService'
 import { getFormByShootingCategory } from '../services/formBuilderService'
 import { getShootingCategories, getProductCategories, getItems } from '../services/categoryService'
-import { getCampaigns } from '../services/campaignService'
+import { getCampaigns, getCampaignWithAssociations } from '../services/campaignService'
 import { formatPrice } from '../utils/priceCalculator'
 import Header from './Header'
 import Footer from './Footer'
@@ -52,9 +52,15 @@ export default function SimulatorNew() {
         })
       )
 
+      // アクティブなキャンペーンの関連付けを取得
+      const activeCampaigns = campaignsData.filter((c) => c.is_active)
+      const campaignsWithAssociations: CampaignWithAssociations[] = await Promise.all(
+        activeCampaigns.map((c) => getCampaignWithAssociations(c.id))
+      ).then((results) => results.filter((r): r is CampaignWithAssociations => r !== null))
+
       setShootingCategories(shootingCats)
       setAllProductCategories(productCategoriesWithItems)
-      setCampaigns(campaignsData)
+      setCampaigns(campaignsWithAssociations)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
