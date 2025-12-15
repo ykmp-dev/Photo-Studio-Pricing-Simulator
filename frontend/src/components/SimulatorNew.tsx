@@ -144,34 +144,19 @@ export default function SimulatorNew() {
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-              現在実施中のキャンペーン
-            </p>
-            <div className="space-y-2">
-              {activeCampaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🎉</span>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-800">{campaign.name}</h3>
-                      <p className="text-xs text-gray-500">
-                        {new Date(campaign.start_date).toLocaleDateString('ja-JP')} 〜{' '}
-                        {new Date(campaign.end_date).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-orange-600">
-                      {campaign.discount_type === 'percentage'
-                        ? `${campaign.discount_value}% OFF`
-                        : `${formatPrice(campaign.discount_value)} 引き`}
-                    </span>
-                  </div>
+        <section className="bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-y border-orange-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <span className="text-sm font-semibold text-gray-700">🎉 現在実施中のキャンペーン</span>
+              {activeCampaigns.map((campaign, index) => (
+                <div key={campaign.id} className="flex items-center gap-2">
+                  {index > 0 && <span className="text-gray-300">|</span>}
+                  <span className="text-sm text-gray-800">{campaign.name}</span>
+                  <span className="text-sm font-bold text-orange-600">
+                    {campaign.discount_type === 'percentage'
+                      ? `${campaign.discount_value}% OFF`
+                      : `${formatPrice(campaign.discount_value)}引き`}
+                  </span>
                 </div>
               ))}
             </div>
