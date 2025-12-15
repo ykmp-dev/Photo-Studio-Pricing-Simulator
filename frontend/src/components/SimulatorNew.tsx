@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { ShootingCategoryWithProducts, Item } from '../types/category'
+import type { ShootingCategory, ProductCategoryWithItems, Item } from '../types/category'
 import type { CampaignWithAssociations } from '../types/campaign'
 import type { FormSchemaWithBlocks } from '../types/formBuilder'
-import { getSimulatorData, calculateSimulatorPrice } from '../services/simulatorService'
+import { calculateSimulatorPrice } from '../services/simulatorService'
 import { getFormByShootingCategory } from '../services/formBuilderService'
+import { getShootingCategories, getProductCategories, getItems } from '../services/categoryService'
+import { getCampaigns } from '../services/campaignService'
 import { formatPrice } from '../utils/priceCalculator'
 import Header from './Header'
 import Footer from './Footer'
@@ -11,7 +13,8 @@ import Footer from './Footer'
 export default function SimulatorNew() {
   const shopId = 1 // TODO: Get from config or context
 
-  const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
+  const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
+  const [allProductCategories, setAllProductCategories] = useState<ProductCategoryWithItems[]>([])
   const [campaigns, setCampaigns] = useState<CampaignWithAssociations[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -30,9 +33,28 @@ export default function SimulatorNew() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const data = await getSimulatorData(shopId)
-      setCategoryStructure(data.categoryStructure)
-      setCampaigns(data.campaigns)
+
+      // すべての商品カテゴリとアイテムを取得
+      const [shootingCats, productCats, campaignsData] = await Promise.all([
+        getShootingCategories(shopId),
+        getProductCategories(shopId),
+        getCampaigns(shopId),
+      ])
+
+      // 各商品カテゴリのアイテムを取得
+      const productCategoriesWithItems = await Promise.all(
+        productCats.map(async (category) => {
+          const items = await getItems(shopId, category.id)
+          return {
+            ...category,
+            items,
+          }
+        })
+      )
+
+      setShootingCategories(shootingCats)
+      setAllProductCategories(productCategoriesWithItems)
+      setCampaigns(campaignsData)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -43,8 +65,8 @@ export default function SimulatorNew() {
 
   // 選択された撮影カテゴリ
   const selectedShooting = useMemo(() => {
-    return categoryStructure.find((s) => s.id === selectedShootingId) || null
-  }, [categoryStructure, selectedShootingId])
+    return shootingCategories.find((s) => s.id === selectedShootingId) || null
+  }, [shootingCategories, selectedShootingId])
 
   // 撮影カテゴリ選択時にフォームを読み込み
   useEffect(() => {
@@ -169,7 +191,7 @@ export default function SimulatorNew() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
               >
                 <option value="">選択してください</option>
-                {categoryStructure.map((shooting) => (
+                {shootingCategories.map((shooting) => (
                   <option key={shooting.id} value={shooting.id}>
                     {shooting.display_name}
                   </option>
@@ -183,7 +205,7 @@ export default function SimulatorNew() {
             </div>
 
             {/* Form Blocks & Product Categories (Integrated) */}
-            {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
+            {selectedShootingId && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block, index) => {
                   // デバッグログ
@@ -309,7 +331,7 @@ export default function SimulatorNew() {
 
                   // Category reference block
                   if (block.block_type === 'category_reference') {
-                    const availableCategories = selectedShooting.product_categories.map(pc => ({ id: pc.id, name: pc.display_name }))
+                    const availableCategories = allProductCategories.map(pc => ({ id: pc.id, name: pc.display_name }))
                     console.log('Category reference block:', {
                       block_id: block.id,
                       looking_for_id: block.metadata?.product_category_id,
@@ -321,7 +343,7 @@ export default function SimulatorNew() {
                       return null
                     }
 
-                    const productCategory = selectedShooting.product_categories.find(
+                    const productCategory = allProductCategories.find(
                       (pc) => pc.id === block.metadata.product_category_id
                     )
 
@@ -363,7 +385,7 @@ export default function SimulatorNew() {
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() =>
-                                          handleItemToggle(item, selectedShooting.id)
+                                          handleItemToggle(item, selectedShootingId || 0)
                                         }
                                         className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
                                       />
@@ -398,13 +420,13 @@ export default function SimulatorNew() {
               </div>
             ) : (
               // Fallback: Show all product categories if no form blocks
-              selectedShooting && (
+              selectedShootingId && (
               <div className="mb-6">
                 <label className="block text-base font-semibold text-gray-800 mb-3">
                   オプション（複数選択可）
                 </label>
                 <div className="space-y-4">
-                  {selectedShooting.product_categories.map((productCategory) => (
+                  {allProductCategories.map((productCategory) => (
                     <div key={productCategory.id}>
                       <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-300">
                         {productCategory.display_name}
@@ -427,7 +449,7 @@ export default function SimulatorNew() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() =>
-                                      handleItemToggle(item, selectedShooting.id)
+                                      handleItemToggle(item, selectedShootingId || 0)
                                     }
                                     className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
                                   />
