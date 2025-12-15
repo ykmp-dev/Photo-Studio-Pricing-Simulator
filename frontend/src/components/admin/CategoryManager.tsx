@@ -12,10 +12,9 @@ import {
   deleteShootingCategory,
   deleteProductCategory,
   deleteItem,
-  getShootingProductAssociations,
-  linkProductToShooting,
 } from '../../services/categoryService'
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
+import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface CategoryManagerProps {
   shopId: number
@@ -30,7 +29,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
   const [items, setItems] = useState<Item[]>([])
 
   // 選択中のカテゴリ
-  const [selectedShooting, setSelectedShooting] = useState<number | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
 
   // 編集フォーム用の状態
@@ -43,19 +41,11 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formPrice, setFormPrice] = useState(0)
-
-  // 商品カテゴリの関連付け
-  const [linkedProductIds, setLinkedProductIds] = useState<number[]>([])
+  const [formAutoSelect, setFormAutoSelect] = useState(false)
 
   useEffect(() => {
     loadData()
   }, [shopId, view])
-
-  useEffect(() => {
-    if (selectedShooting) {
-      loadProductAssociations()
-    }
-  }, [selectedShooting])
 
   useEffect(() => {
     if (selectedProduct) {
@@ -65,26 +55,16 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
 
   const loadData = async () => {
     try {
-      if (view === 'shooting' || selectedShooting) {
+      if (view === 'shooting') {
         const shooting = await getShootingCategories(shopId)
         setShootingCategories(shooting)
       }
-      if (view === 'product' || selectedShooting) {
+      if (view === 'product') {
         const product = await getProductCategories(shopId)
         setProductCategories(product)
       }
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
-    }
-  }
-
-  const loadProductAssociations = async () => {
-    if (!selectedShooting) return
-    try {
-      const associations = await getShootingProductAssociations(selectedShooting)
-      setLinkedProductIds(associations.map((a) => a.product_category_id))
-    } catch (err) {
-      console.error('関連の読み込みに失敗しました:', err)
     }
   }
 
@@ -109,10 +89,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('撮影カテゴリを作成しました')
+      alert(getSuccessMessage('create', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -127,10 +107,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('商品カテゴリを作成しました')
+      alert(getSuccessMessage('create', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -147,13 +127,14 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
+        auto_select: formAutoSelect,
       })
       resetForm()
       await loadItems()
-      alert('アイテムを作成しました')
+      alert(getSuccessMessage('create', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('作成に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -166,10 +147,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('更新しました')
+      alert(getSuccessMessage('update', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -182,10 +163,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
       })
       resetForm()
       await loadData()
-      alert('更新しました')
+      alert(getSuccessMessage('update', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -195,13 +176,14 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
+        auto_select: formAutoSelect,
       })
       resetForm()
       await loadItems()
-      alert('更新しました')
+      alert(getSuccessMessage('update', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('更新に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -210,10 +192,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteShootingCategory(id)
       await loadData()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', '撮影カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -222,10 +204,10 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteProductCategory(id)
       await loadData()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', '商品カテゴリ'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
   }
 
@@ -234,28 +216,11 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     try {
       await deleteItem(id)
       await loadItems()
-      alert('削除しました')
+      alert(getSuccessMessage('delete', 'アイテム'))
     } catch (err) {
       console.error(err)
-      alert('削除に失敗しました')
+      alert(getErrorMessage(err))
     }
-  }
-
-  const handleSaveProductLinks = async () => {
-    if (!selectedShooting) return
-    try {
-      await linkProductToShooting(selectedShooting, linkedProductIds)
-      alert('商品カテゴリの関連付けを保存しました')
-    } catch (err) {
-      console.error(err)
-      alert('保存に失敗しました')
-    }
-  }
-
-  const handleToggleProductLink = (productId: number) => {
-    setLinkedProductIds((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
-    )
   }
 
   const resetForm = () => {
@@ -263,6 +228,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName('')
     setFormDescription('')
     setFormPrice(0)
+    setFormAutoSelect(false)
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
@@ -286,6 +252,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName(item.name)
     setFormPrice(item.price)
     setFormDescription(item.description || '')
+    setFormAutoSelect(item.auto_select)
     setEditingItemId(item.id)
   }
 
@@ -414,9 +381,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
               {shootingCategories.map((category) => (
                 <div
                   key={category.id}
-                  className={`border rounded-lg p-4 ${
-                    selectedShooting === category.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
+                  className="border rounded-lg p-4 border-gray-200"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -424,15 +389,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                       <p className="text-sm text-gray-500">キー: {category.name}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedShooting(category.id)
-                          loadProductAssociations()
-                        }}
-                        className="text-blue-600 hover:text-blue-700 text-sm px-2"
-                      >
-                        商品設定
-                      </button>
                       <button
                         onClick={() => startEditShooting(category)}
                         className="text-blue-600 hover:text-blue-700 text-sm px-2"
@@ -447,32 +403,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                       </button>
                     </div>
                   </div>
-
-                  {/* 商品カテゴリの関連付け */}
-                  {selectedShooting === category.id && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h5 className="font-medium text-gray-700 mb-2">表示する商品カテゴリ</h5>
-                      <div className="space-y-2 mb-3">
-                        {productCategories.map((product) => (
-                          <label key={product.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={linkedProductIds.includes(product.id)}
-                              onChange={() => handleToggleProductLink(product.id)}
-                              className="w-4 h-4 text-blue-600 rounded"
-                            />
-                            <span className="text-sm text-gray-700">{product.display_name}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <button
-                        onClick={handleSaveProductLinks}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium"
-                      >
-                        保存
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -654,6 +584,19 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                     rows={3}
                   />
                 </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formAutoSelect}
+                      onChange={(e) => setFormAutoSelect(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      自動選択（商品カテゴリ選択時に自動で選択）
+                    </span>
+                  </label>
+                </div>
                 <div className="flex gap-2">
                   {editingItemId ? (
                     <>
@@ -698,7 +641,14 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                   <div key={item.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                          {item.auto_select && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                              自動選択
+                            </span>
+                          )}
+                        </div>
                         <p className="text-lg font-bold text-blue-600">¥{item.price.toLocaleString()}</p>
                       </div>
                       <div className="flex gap-2">

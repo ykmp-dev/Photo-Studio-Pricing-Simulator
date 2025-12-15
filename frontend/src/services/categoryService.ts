@@ -11,6 +11,7 @@ import type {
   UpdateShootingCategory,
   UpdateProductCategory,
   UpdateItem,
+  UpdateShootingProductAssociation,
   ProductCategoryWithItems,
   ShootingCategoryWithProducts,
 } from '../types/category'
@@ -183,7 +184,7 @@ export async function createShootingProductAssociation(
 
 export async function updateShootingProductAssociation(
   id: number,
-  association: Partial<CreateShootingProductAssociation>
+  association: UpdateShootingProductAssociation
 ): Promise<ShootingProductAssociation> {
   const { data, error } = await supabase
     .from('shooting_product_associations')
@@ -205,6 +206,9 @@ export async function deleteShootingProductAssociation(id: number): Promise<void
   if (error) throw error
 }
 
+/**
+ * 撮影カテゴリの商品カテゴリ関連を一括更新（並び順変更）
+ */
 export async function updateAssociationsSortOrder(associationIds: number[]): Promise<void> {
   const updates = associationIds.map((id, index) =>
     updateShootingProductAssociation(id, { sort_order: index })

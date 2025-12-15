@@ -26,14 +26,15 @@ export interface ProductCategory {
   updated_at: string
 }
 
-// 撮影カテゴリと商品カテゴリの関連
+// 撮影カテゴリと商品カテゴリの関連（shooting_product_associations テーブル）
 export interface ShootingProductAssociation {
   id: number
   shooting_category_id: number
   product_category_id: number
   sort_order: number
-  is_required?: boolean
+  is_required: boolean
   created_at: string
+  updated_at: string
 }
 
 // アイテム（実際の商品）
@@ -46,8 +47,8 @@ export interface Item {
   description: string | null
   sort_order: number
   is_active: boolean
-  is_required?: boolean // 必須アイテム（選択解除不可）
-  auto_select?: boolean // 商品カテゴリ選択時に自動選択
+  is_required: boolean // 必須アイテム（選択解除不可）
+  auto_select: boolean // 商品カテゴリ選択時に自動選択
   created_at: string
   updated_at: string
 }
@@ -86,6 +87,11 @@ export interface CreateItem {
 export interface CreateShootingProductAssociation {
   shooting_category_id: number
   product_category_id: number
+  sort_order?: number
+  is_required?: boolean
+}
+
+export interface UpdateShootingProductAssociation {
   sort_order?: number
   is_required?: boolean
 }

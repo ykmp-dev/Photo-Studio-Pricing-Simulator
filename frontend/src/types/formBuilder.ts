@@ -3,17 +3,52 @@
 export interface FormSchema {
   id: number
   shop_id: number
+  shooting_category_id: number | null
   name: string
   category: string | null
   description: string | null
   is_active: boolean
   sort_order: number
-  shooting_category_id?: number | null
   created_at: string
   updated_at: string
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
+export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no' | 'choice'
+
+// Choice option for choice block
+export interface ChoiceOption {
+  value: string          // 内部値（条件分岐で使用）
+  label: string          // 表示テキスト
+  price: number          // この選択肢の追加料金（税込、円単位）
+  description?: string   // 補足説明（オプション）
+}
+
+// Condition for conditional block display
+export interface ShowCondition {
+  type: 'yes_no' | 'choice'
+  block_id: number
+  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value
+}
+
+export interface FormBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+    // choice用
+    choice_options?: ChoiceOption[]
+    choice_display?: 'radio' | 'select' | 'auto'  // auto: 選択肢数で自動判定
+    auto_sync_category_id?: number  // カテゴリから自動生成（カテゴリ連動モード）
+  }
+  show_condition: ShowCondition | null
+  created_at: string
+  updated_at: string
+}
 
 export interface FormField {
   id: number
@@ -63,21 +98,21 @@ export interface ConditionalRule {
 // フォーム作成・更新用の型
 export interface CreateFormSchema {
   shop_id: number
+  shooting_category_id?: number
   name: string
   category?: string
   description?: string
   is_active?: boolean
   sort_order?: number
-  shooting_category_id?: number
 }
 
 export interface UpdateFormSchema {
+  shooting_category_id?: number
   name?: string
   category?: string
   description?: string
   is_active?: boolean
   sort_order?: number
-  shooting_category_id?: number
 }
 
 export interface CreateFormField {
@@ -143,44 +178,31 @@ export interface FormFieldWithOptions extends FormField {
   conditional_rules: ConditionalRule[]
 }
 
-// ====================================
-// 新しいブロックベースのフォーム型定義
-// ====================================
-
-export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no' | 'choice'
-
-export interface ChoiceOption {
-  value: string          // 内部値（条件分岐で使用）
-  label: string          // 表示テキスト
-  price: number          // この選択肢の追加料金（税込、円単位）
-  description?: string   // 補足説明（オプション）
+// フォームとブロック
+export interface FormSchemaWithBlocks extends FormSchema {
+  blocks: FormBlock[]
 }
 
-export interface ShowCondition {
-  type: 'yes_no' | 'choice'
-  block_id: number
-  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value
-}
-
-export interface FormBlock {
-  id: number
+// Create/Update types for blocks
+export interface CreateFormBlock {
   form_schema_id: number
   block_type: BlockType
-  content: string | null
-  sort_order: number
-  metadata: {
+  content?: string
+  sort_order?: number
+  metadata?: {
     product_category_id?: number
     display_mode?: 'expanded' | 'collapsed'
-    choice_options?: ChoiceOption[]
-    choice_display?: 'radio' | 'select' | 'auto'
-    auto_sync_category_id?: number  // カテゴリから自動生成
   }
-  show_condition: ShowCondition | null
-  created_at: string
-  updated_at: string
+  show_condition?: ShowCondition | null
 }
 
-export interface FormSchemaWithBlocks extends FormSchema {
-  shooting_category_id: number | null
-  blocks: FormBlock[]
+export interface UpdateFormBlock {
+  block_type?: BlockType
+  content?: string
+  sort_order?: number
+  metadata?: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  show_condition?: ShowCondition | null
 }
