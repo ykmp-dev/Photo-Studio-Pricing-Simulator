@@ -3,8 +3,9 @@ import { useAuth } from '../contexts/AuthContext'
 import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
 import FormManager from './admin/FormManager'
+import CSVManager from './admin/CSVManager'
 
-type Tab = 'categories' | 'campaigns' | 'forms'
+type Tab = 'categories' | 'campaigns' | 'forms' | 'csv'
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
@@ -71,6 +72,17 @@ export default function AdminDashboard() {
             >
               フォームビルダー
             </button>
+            <button
+              onClick={() => setActiveTab('csv')}
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
+                activeTab === 'csv'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
+              }`}
+              style={{ letterSpacing: '0.05em' }}
+            >
+              CSV管理
+            </button>
           </nav>
         </div>
       </div>
@@ -80,6 +92,7 @@ export default function AdminDashboard() {
         {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
         {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
         {activeTab === 'forms' && <FormManager shopId={shopId} />}
+        {activeTab === 'csv' && <CSVManager />}
       </main>
     </div>
   )
