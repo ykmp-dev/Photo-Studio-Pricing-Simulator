@@ -50,8 +50,10 @@ export default function SimulatorNew() {
   useEffect(() => {
     if (selectedShootingId) {
       loadForm(selectedShootingId)
+      setYesNoAnswers(new Map()) // Yes/No回答をリセット
     } else {
       setFormSchema(null)
+      setYesNoAnswers(new Map())
     }
   }, [selectedShootingId])
 
@@ -65,30 +67,12 @@ export default function SimulatorNew() {
     }
   }
 
-  // 撮影カテゴリ選択時に自動選択アイテムを選択
-  useEffect(() => {
-    if (selectedShooting) {
-      const autoSelectItems: Array<Item & { shooting_category_id: number }> = []
-      selectedShooting.product_categories.forEach((productCategory) => {
-        productCategory.items.forEach((item) => {
-          if (item.auto_select) {
-            autoSelectItems.push({ ...item, shooting_category_id: selectedShooting.id })
-          }
-        })
-      })
-      setSelectedItems(autoSelectItems)
-    }
-  }, [selectedShooting])
-
   // 価格計算
   const priceCalculation = useMemo(() => {
     return calculateSimulatorPrice(selectedItems, campaigns)
   }, [selectedItems, campaigns])
 
   const handleItemToggle = (item: Item, shootingCategoryId: number) => {
-    // 必須アイテムは選択解除できない
-    if (item.is_required) return
-
     setSelectedItems((prev) => {
       const exists = prev.find((i) => i.id === item.id)
       if (exists) {
@@ -201,12 +185,31 @@ export default function SimulatorNew() {
             {/* Form Blocks & Product Categories (Integrated) */}
             {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
-                {formSchema.blocks.map((block) => {
-                  // Check show_condition
+                {formSchema.blocks.map((block, index) => {
+                  // Check show_condition - 条件が設定されている場合
                   if (block.show_condition) {
-                    const answer = yesNoAnswers.get(block.show_condition.block_id)
-                    if (answer !== block.show_condition.value) {
-                      return null // Don't show this block
+                    const requiredAnswer = yesNoAnswers.get(block.show_condition.block_id)
+                    // 条件が満たされていない場合は非表示
+                    if (requiredAnswer !== block.show_condition.value) {
+                      return null
+                    }
+                  }
+
+                  // Progressive disclosure: Yes/Noブロック以外の場合、前のYes/Noブロックに未回答があれば非表示
+                  if (block.block_type !== 'yes_no' && block.block_type !== 'heading' && block.block_type !== 'text') {
+                    // このブロックより前のYes/Noブロックで未回答のものがあるか確認
+                    const hasUnansweredYesNo = formSchema.blocks
+                      .slice(0, index)
+                      .some(prevBlock => {
+                        if (prevBlock.block_type === 'yes_no') {
+                          const answer = yesNoAnswers.get(prevBlock.id)
+                          return answer === null || answer === undefined
+                        }
+                        return false
+                      })
+
+                    if (hasUnansweredYesNo) {
+                      return null // 前のYes/No質問に答えていない場合は非表示
                     }
                   }
 
@@ -214,8 +217,8 @@ export default function SimulatorNew() {
                   if (block.block_type === 'yes_no') {
                     const currentAnswer = yesNoAnswers.get(block.id)
                     return (
-                      <div key={block.id} className="border border-gray-300 rounded-lg p-4 bg-white">
-                        <p className="text-gray-800 font-medium mb-3">{block.content}</p>
+                      <div key={block.id} className="border-2 border-blue-400 rounded-lg p-5 bg-blue-50 shadow-sm">
+                        <p className="text-gray-800 font-semibold mb-4 text-lg">{block.content}</p>
                         <div className="flex gap-3">
                           <button
                             onClick={() => {
@@ -225,10 +228,10 @@ export default function SimulatorNew() {
                                 return newMap
                               })
                             }}
-                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
                               currentAnswer === 'yes'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-blue-600 text-white shadow-md scale-105'
+                                : 'bg-white text-gray-700 hover:bg-blue-100 border-2 border-gray-300'
                             }`}
                           >
                             はい
@@ -241,10 +244,10 @@ export default function SimulatorNew() {
                                 return newMap
                               })
                             }}
-                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
                               currentAnswer === 'no'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-blue-600 text-white shadow-md scale-105'
+                                : 'bg-white text-gray-700 hover:bg-blue-100 border-2 border-gray-300'
                             }`}
                           >
                             いいえ
@@ -314,11 +317,7 @@ export default function SimulatorNew() {
                                 return (
                                   <label
                                     key={item.id}
-                                    className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
-                                      item.is_required
-                                        ? 'bg-blue-50 border-blue-300'
-                                        : 'hover:bg-blue-50 cursor-pointer bg-white'
-                                    }`}
+                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors hover:bg-blue-50 cursor-pointer bg-white"
                                   >
                                     <div className="flex items-center flex-1">
                                       <input
@@ -327,19 +326,13 @@ export default function SimulatorNew() {
                                         onChange={() =>
                                           handleItemToggle(item, selectedShooting.id)
                                         }
-                                        disabled={item.is_required}
-                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
+                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
                                       />
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                           <span className="font-medium text-gray-800">
                                             {item.name}
                                           </span>
-                                          {item.is_required && (
-                                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                                              必須
-                                            </span>
-                                          )}
                                         </div>
                                         {item.description && (
                                           <span className="text-xs text-gray-500 block mt-1">
@@ -388,11 +381,7 @@ export default function SimulatorNew() {
                             return (
                               <label
                                 key={item.id}
-                                className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
-                                  item.is_required
-                                    ? 'bg-blue-50 border-blue-300'
-                                    : 'hover:bg-blue-50 cursor-pointer'
-                                }`}
+                                className="flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors hover:bg-blue-50 cursor-pointer"
                               >
                                 <div className="flex items-center flex-1">
                                   <input
@@ -401,19 +390,13 @@ export default function SimulatorNew() {
                                     onChange={() =>
                                       handleItemToggle(item, selectedShooting.id)
                                     }
-                                    disabled={item.is_required}
-                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
                                   />
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium text-gray-800">
                                         {item.name}
                                       </span>
-                                      {item.is_required && (
-                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                                          必須
-                                        </span>
-                                      )}
                                     </div>
                                     {item.description && (
                                       <span className="text-xs text-gray-500 block mt-1">

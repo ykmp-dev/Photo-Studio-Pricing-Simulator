@@ -86,19 +86,19 @@ export interface ConditionalRule {
 // フォーム作成・更新用の型
 export interface CreateFormSchema {
   shop_id: number
+  shooting_category_id?: number
   name: string
   category?: string
   description?: string
-  shooting_category_id?: number
   is_active?: boolean
   sort_order?: number
 }
 
 export interface UpdateFormSchema {
+  shooting_category_id?: number
   name?: string
   category?: string
   description?: string
-  shooting_category_id?: number
   is_active?: boolean
   sort_order?: number
 }
