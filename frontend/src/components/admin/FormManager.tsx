@@ -42,6 +42,10 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [blockShowCondition, setBlockShowCondition] = useState<ShowCondition | null>(null)
   const [conditionEnabled, setConditionEnabled] = useState(false)
 
+  // プレビューモーダル
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewYesNoAnswers, setPreviewYesNoAnswers] = useState<Map<number, 'yes' | 'no'>>(new Map())
+
   useEffect(() => {
     loadData()
   }, [shopId])
@@ -276,6 +280,34 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setEditingBlockId(block.id)
   }
 
+  // フォームの公開/非公開を切り替え
+  const handleToggleFormPublish = async () => {
+    if (!selectedForm) return
+
+    const newStatus = !selectedForm.is_active
+    const action = newStatus ? '公開' : '非公開'
+
+    if (!confirm(`このフォームを${action}にしますか？`)) return
+
+    try {
+      await updateFormSchema(selectedForm.id, { is_active: newStatus })
+      await loadData()
+      if (selectedFormId) {
+        await loadFormWithBlocks(selectedFormId)
+      }
+      alert(`フォームを${action}にしました`)
+    } catch (err) {
+      console.error(err)
+      alert(`${action}に失敗しました: ` + getErrorMessage(err))
+    }
+  }
+
+  // プレビューモーダルを開く
+  const handleOpenPreview = () => {
+    setPreviewYesNoAnswers(new Map())
+    setShowPreview(true)
+  }
+
   const getBlockTypeLabel = (type: BlockType): string => {
     const labels: Record<BlockType, string> = {
       text: 'テキスト',
@@ -434,9 +466,36 @@ export default function FormManager({ shopId }: FormManagerProps) {
             </div>
           ) : (
             <>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {selectedForm.name} のブロック管理
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {selectedForm.name} のブロック管理
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleOpenPreview}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
+                  >
+                    👁️ プレビュー
+                  </button>
+                  <button
+                    onClick={handleToggleFormPublish}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      selectedForm.is_active
+                        ? 'bg-orange-600 text-white hover:bg-orange-700'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                  >
+                    {selectedForm.is_active ? '🔒 非公開にする' : '🚀 公開する'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 公開ステータス表示 */}
+              <div className={`mb-4 px-3 py-2 rounded-md text-sm ${
+                selectedForm.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-700 border border-gray-200'
+              }`}>
+                ステータス: {selectedForm.is_active ? '✅ 公開中' : '⚪ 非公開'}
+              </div>
 
               <div className="grid grid-cols-2 gap-6">
                 {/* ブロック作成フォーム */}
@@ -669,6 +728,145 @@ export default function FormManager({ shopId }: FormManagerProps) {
           )}
         </div>
       </div>
+
+      {/* プレビューモーダル */}
+      {showPreview && selectedForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                📋 {selectedForm.name} - プレビュー
+              </h3>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              {selectedForm.description && (
+                <p className="text-sm text-gray-600 mb-4">{selectedForm.description}</p>
+              )}
+
+              <div className="space-y-4">
+                {selectedForm.blocks.map((block) => {
+                  // 表示条件のチェック
+                  if (block.show_condition) {
+                    const requiredAnswer = previewYesNoAnswers.get(block.show_condition.block_id)
+                    if (requiredAnswer !== block.show_condition.value) {
+                      return null
+                    }
+                  }
+
+                  // 見出しブロック
+                  if (block.block_type === 'heading') {
+                    return (
+                      <div key={block.id}>
+                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">
+                          {block.content?.replace(/^##\s*/, '')}
+                        </h2>
+                      </div>
+                    )
+                  }
+
+                  // テキストブロック
+                  if (block.block_type === 'text') {
+                    return (
+                      <div key={block.id} className="text-gray-700">
+                        {block.content}
+                      </div>
+                    )
+                  }
+
+                  // Yes/No質問ブロック
+                  if (block.block_type === 'yes_no') {
+                    const answer = previewYesNoAnswers.get(block.id)
+                    return (
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4">
+                        <p className="text-sm font-medium text-gray-800 mb-3">{block.content}</p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              const newAnswers = new Map(previewYesNoAnswers)
+                              newAnswers.set(block.id, 'yes')
+                              setPreviewYesNoAnswers(newAnswers)
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              answer === 'yes'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            はい
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newAnswers = new Map(previewYesNoAnswers)
+                              newAnswers.set(block.id, 'no')
+                              setPreviewYesNoAnswers(newAnswers)
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              answer === 'no'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            いいえ
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // カテゴリ参照ブロック
+                  if (block.block_type === 'category_reference') {
+                    const productCategory = productCategories.find(
+                      (pc) => pc.id === block.metadata?.product_category_id
+                    )
+
+                    if (!productCategory) {
+                      return (
+                        <div key={block.id} className="text-sm text-red-600">
+                          カテゴリが見つかりません (ID: {block.metadata?.product_category_id})
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div key={block.id}>
+                        {block.content && (
+                          <p className="text-sm text-gray-600 mb-2">{block.content}</p>
+                        )}
+                        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-300">
+                            {productCategory.display_name}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            ※ プレビューでは実際のアイテムは表示されません
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return null
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
