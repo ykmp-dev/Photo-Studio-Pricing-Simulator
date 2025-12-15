@@ -14,6 +14,10 @@ import type {
   UpdateConditionalRule,
   FormWithFields,
   FormFieldWithOptions,
+  FormBlock,
+  FormSchemaWithBlocks,
+  CreateFormBlock,
+  UpdateFormBlock,
 } from '../types/formBuilder'
 
 // ==================== FormSchema CRUD ====================
@@ -320,4 +324,117 @@ export async function duplicateFormSchema(sourceId: number, shopId: number): Pro
   }
 
   return newForm
+}
+
+// ==================== FormBlock CRUD ====================
+
+/**
+ * フォームスキーマをブロック付きで取得
+ */
+export async function getFormWithBlocks(formSchemaId: number): Promise<FormSchemaWithBlocks | null> {
+  const { data: formSchema, error: formError } = await supabase
+    .from('form_schemas')
+    .select('*')
+    .eq('id', formSchemaId)
+    .single()
+
+  if (formError) throw formError
+  if (!formSchema) return null
+
+  const { data: blocks, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', formSchemaId)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  return {
+    ...formSchema,
+    blocks: blocks || [],
+  }
+}
+
+/**
+ * フォームブロックを作成
+ */
+export async function createFormBlock(block: CreateFormBlock): Promise<FormBlock> {
+  const { data, error } = await supabase
+    .from('form_blocks')
+    .insert(block)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームブロックを更新
+ */
+export async function updateFormBlock(id: number, block: UpdateFormBlock): Promise<FormBlock> {
+  const { data, error } = await supabase
+    .from('form_blocks')
+    .update({ ...block, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームブロックを削除
+ */
+export async function deleteFormBlock(id: number): Promise<void> {
+  const { error } = await supabase.from('form_blocks').delete().eq('id', id)
+
+  if (error) throw error
+}
+
+/**
+ * ブロックの並び順を一括更新
+ */
+export async function updateBlocksOrder(blockIds: number[]): Promise<void> {
+  const updates = blockIds.map((id, index) =>
+    updateFormBlock(id, { sort_order: index })
+  )
+
+  await Promise.all(updates)
+}
+
+/**
+ * 撮影カテゴリに紐づくフォームを取得（ブロック付き）
+ */
+export async function getFormByShootingCategory(
+  shopId: number,
+  shootingCategoryId: number
+): Promise<FormSchemaWithBlocks | null> {
+  const { data: formSchema, error: formError } = await supabase
+    .from('form_schemas')
+    .select('*')
+    .eq('shop_id', shopId)
+    .eq('shooting_category_id', shootingCategoryId)
+    .eq('is_active', true)
+    .single()
+
+  if (formError) {
+    if (formError.code === 'PGRST116') return null // No rows found
+    throw formError
+  }
+  if (!formSchema) return null
+
+  const { data: blocks, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', formSchema.id)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  return {
+    ...formSchema,
+    blocks: blocks || [],
+  }
 }

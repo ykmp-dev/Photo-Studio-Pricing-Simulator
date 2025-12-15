@@ -3,6 +3,7 @@
 export interface FormSchema {
   id: number
   shop_id: number
+  shooting_category_id: number | null
   name: string
   category: string | null
   description: string | null
@@ -62,6 +63,7 @@ export interface ConditionalRule {
 // フォーム作成・更新用の型
 export interface CreateFormSchema {
   shop_id: number
+  shooting_category_id?: number
   name: string
   category?: string
   description?: string
@@ -70,6 +72,7 @@ export interface CreateFormSchema {
 }
 
 export interface UpdateFormSchema {
+  shooting_category_id?: number
   name?: string
   category?: string
   description?: string
@@ -138,4 +141,59 @@ export interface FormWithFields extends FormSchema {
 export interface FormFieldWithOptions extends FormField {
   options: FieldOption[]
   conditional_rules: ConditionalRule[]
+}
+
+// ==================== Form Blocks ====================
+
+export type BlockType = 'text' | 'heading' | 'list' | 'category_reference' | 'yes_no'
+
+// Condition for conditional block display
+export interface ShowCondition {
+  type: 'yes_no'
+  block_id: number
+  value: 'yes' | 'no'
+}
+
+export interface FormBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  show_condition: ShowCondition | null
+  created_at: string
+  updated_at: string
+}
+
+// フォームとブロック
+export interface FormSchemaWithBlocks extends FormSchema {
+  blocks: FormBlock[]
+}
+
+// Create/Update types for blocks
+export interface CreateFormBlock {
+  form_schema_id: number
+  block_type: BlockType
+  content?: string
+  sort_order?: number
+  metadata?: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  show_condition?: ShowCondition | null
+}
+
+export interface UpdateFormBlock {
+  block_type?: BlockType
+  content?: string
+  sort_order?: number
+  metadata?: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+  }
+  show_condition?: ShowCondition | null
 }
