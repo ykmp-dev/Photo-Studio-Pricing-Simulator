@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
+import ShootingCategoryRelationManager from './admin/ShootingCategoryRelationManager'
 import FormManager from './admin/FormManager'
 
-type Tab = 'categories' | 'campaigns' | 'forms'
+type Tab = 'categories' | 'relations' | 'campaigns' | 'forms'
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
@@ -50,6 +51,17 @@ export default function AdminDashboard() {
               カテゴリ・アイテム管理
             </button>
             <button
+              onClick={() => setActiveTab('relations')}
+              className={`py-4 px-2 border-b-4 font-semibold transition-all ${
+                activeTab === 'relations'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300'
+              }`}
+              style={{ letterSpacing: '0.05em' }}
+            >
+              カテゴリ関連設定
+            </button>
+            <button
               onClick={() => setActiveTab('campaigns')}
               className={`py-4 px-2 border-b-4 font-semibold transition-all ${
                 activeTab === 'campaigns'
@@ -78,6 +90,7 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
+        {activeTab === 'relations' && <ShootingCategoryRelationManager shopId={shopId} />}
         {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
         {activeTab === 'forms' && <FormManager shopId={shopId} />}
       </main>
