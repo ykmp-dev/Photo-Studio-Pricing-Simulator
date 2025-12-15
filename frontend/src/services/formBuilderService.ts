@@ -14,6 +14,10 @@ import type {
   UpdateConditionalRule,
   FormWithFields,
   FormFieldWithOptions,
+  FormBlock,
+  FormSchemaWithBlocks,
+  BlockType,
+  ShowCondition,
 } from '../types/formBuilder'
 
 // ==================== FormSchema CRUD ====================
@@ -320,4 +324,144 @@ export async function duplicateFormSchema(sourceId: number, shopId: number): Pro
   }
 
   return newForm
+}
+
+// ==================== ブロックベースのフォームAPI ====================
+
+/**
+ * 撮影カテゴリIDでフォームを取得（ブロック情報含む）
+ */
+export async function getFormByShootingCategory(
+  shopId: number,
+  shootingCategoryId: number
+): Promise<FormSchemaWithBlocks | null> {
+  // form_schemasテーブルからshooting_category_idで検索
+  const { data: formData, error: formError } = await supabase
+    .from('form_schemas')
+    .select('*')
+    .eq('shop_id', shopId)
+    .eq('shooting_category_id', shootingCategoryId)
+    .eq('is_active', true)
+    .single()
+
+  if (formError) {
+    if (formError.code === 'PGRST116') {
+      // データが見つからない場合
+      return null
+    }
+    throw formError
+  }
+
+  if (!formData) return null
+
+  // ブロックを取得
+  const { data: blocksData, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', formData.id)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  return {
+    ...formData,
+    shooting_category_id: formData.shooting_category_id || null,
+    blocks: blocksData || [],
+  }
+}
+
+/**
+ * フォームIDでフォームを取得（ブロック情報含む）
+ */
+export async function getFormWithBlocks(formSchemaId: number): Promise<FormSchemaWithBlocks | null> {
+  const { data: formData, error: formError } = await supabase
+    .from('form_schemas')
+    .select('*')
+    .eq('id', formSchemaId)
+    .single()
+
+  if (formError) throw formError
+  if (!formData) return null
+
+  const { data: blocksData, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', formSchemaId)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  return {
+    ...formData,
+    shooting_category_id: formData.shooting_category_id || null,
+    blocks: blocksData || [],
+  }
+}
+
+/**
+ * フォームブロックを作成
+ */
+export async function createFormBlock(block: {
+  form_schema_id: number
+  block_type: BlockType
+  content?: string
+  sort_order: number
+  metadata?: any
+  show_condition?: ShowCondition | null
+}): Promise<FormBlock> {
+  const { data, error } = await supabase
+    .from('form_blocks')
+    .insert(block)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームブロックを更新
+ */
+export async function updateFormBlock(
+  id: number,
+  block: {
+    block_type?: BlockType
+    content?: string
+    sort_order?: number
+    metadata?: any
+    show_condition?: ShowCondition | null
+  }
+): Promise<FormBlock> {
+  const { data, error } = await supabase
+    .from('form_blocks')
+    .update({ ...block, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームブロックを削除
+ */
+export async function deleteFormBlock(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('form_blocks')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+/**
+ * ブロックの並び順を一括更新
+ */
+export async function updateBlocksOrder(blockIds: number[]): Promise<void> {
+  const updates = blockIds.map((id, index) =>
+    updateFormBlock(id, { sort_order: index })
+  )
+
+  await Promise.all(updates)
 }
