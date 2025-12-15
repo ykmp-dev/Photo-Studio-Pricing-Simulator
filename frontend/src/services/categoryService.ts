@@ -209,14 +209,12 @@ export async function deleteShootingProductAssociation(id: number): Promise<void
 /**
  * 撮影カテゴリの商品カテゴリ関連を一括更新（並び順変更）
  */
-export async function updateAssociationsSortOrder(
-  updates: Array<{ id: number; sort_order: number }>
-): Promise<void> {
-  await Promise.all(
-    updates.map(({ id, sort_order }) =>
-      updateShootingProductAssociation(id, { sort_order })
-    )
+export async function updateAssociationsSortOrder(associationIds: number[]): Promise<void> {
+  const updates = associationIds.map((id, index) =>
+    updateShootingProductAssociation(id, { sort_order: index })
   )
+
+  await Promise.all(updates)
 }
 
 // ==================== 複合クエリ ====================

@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { ShootingCategory, ProductCategoryWithItems, Item } from '../types/category'
+import type { ShootingCategoryWithProducts, Item } from '../types/category'
 import type { CampaignWithAssociations } from '../types/campaign'
 import type { FormSchemaWithBlocks } from '../types/formBuilder'
-import { calculateSimulatorPrice } from '../services/simulatorService'
+import { getSimulatorData, calculateSimulatorPrice } from '../services/simulatorService'
 import { getFormByShootingCategory } from '../services/formBuilderService'
-import { getShootingCategories, getProductCategories, getItems } from '../services/categoryService'
-import { getCampaigns, getCampaignWithAssociations } from '../services/campaignService'
 import { formatPrice } from '../utils/priceCalculator'
 import Header from './Header'
 import Footer from './Footer'
@@ -13,8 +11,7 @@ import Footer from './Footer'
 export default function SimulatorNew() {
   const shopId = 1 // TODO: Get from config or context
 
-  const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
-  const [allProductCategories, setAllProductCategories] = useState<ProductCategoryWithItems[]>([])
+  const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
   const [campaigns, setCampaigns] = useState<CampaignWithAssociations[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -25,7 +22,7 @@ export default function SimulatorNew() {
   const [formSchema, setFormSchema] = useState<FormSchemaWithBlocks | null>(null)
   // Yes/No answers: Map<block_id, 'yes' | 'no' | null>
   const [yesNoAnswers, setYesNoAnswers] = useState<Map<number, 'yes' | 'no' | null>>(new Map())
-  // Choice answers: Map<block_id, option.value>
+  // Choice answers: Map<block_id, selected_value>
   const [choiceAnswers, setChoiceAnswers] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
@@ -35,34 +32,9 @@ export default function SimulatorNew() {
   const loadData = async () => {
     try {
       setLoading(true)
-
-      // すべての商品カテゴリとアイテムを取得
-      const [shootingCats, productCats, campaignsData] = await Promise.all([
-        getShootingCategories(shopId),
-        getProductCategories(shopId),
-        getCampaigns(shopId),
-      ])
-
-      // 各商品カテゴリのアイテムを取得
-      const productCategoriesWithItems = await Promise.all(
-        productCats.map(async (category) => {
-          const items = await getItems(shopId, category.id)
-          return {
-            ...category,
-            items,
-          }
-        })
-      )
-
-      // アクティブなキャンペーンの関連付けを取得
-      const activeCampaigns = campaignsData.filter((c) => c.is_active)
-      const campaignsWithAssociations: CampaignWithAssociations[] = await Promise.all(
-        activeCampaigns.map((c) => getCampaignWithAssociations(c.id))
-      ).then((results) => results.filter((r): r is CampaignWithAssociations => r !== null))
-
-      setShootingCategories(shootingCats)
-      setAllProductCategories(productCategoriesWithItems)
-      setCampaigns(campaignsWithAssociations)
+      const data = await getSimulatorData(shopId)
+      setCategoryStructure(data.categoryStructure)
+      setCampaigns(data.campaigns)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -73,19 +45,15 @@ export default function SimulatorNew() {
 
   // 選択された撮影カテゴリ
   const selectedShooting = useMemo(() => {
-    return shootingCategories.find((s) => s.id === selectedShootingId) || null
-  }, [shootingCategories, selectedShootingId])
+    return categoryStructure.find((s) => s.id === selectedShootingId) || null
+  }, [categoryStructure, selectedShootingId])
 
   // 撮影カテゴリ選択時にフォームを読み込み
   useEffect(() => {
     if (selectedShootingId) {
       loadForm(selectedShootingId)
-      setYesNoAnswers(new Map()) // Yes/No回答をリセット
-      setChoiceAnswers(new Map()) // Choice回答をリセット
     } else {
       setFormSchema(null)
-      setYesNoAnswers(new Map())
-      setChoiceAnswers(new Map()) // Choice回答をリセット
     }
   }, [selectedShootingId])
 
@@ -99,7 +67,27 @@ export default function SimulatorNew() {
     }
   }
 
-  // Choice ブロックで選択された料金の合計
+  // 撮影カテゴリ選択時に自動選択アイテムを選択
+  useEffect(() => {
+    if (selectedShooting) {
+      const autoSelectItems: Array<Item & { shooting_category_id: number }> = []
+      selectedShooting.product_categories.forEach((productCategory) => {
+        productCategory.items.forEach((item) => {
+          if (item.auto_select) {
+            autoSelectItems.push({ ...item, shooting_category_id: selectedShooting.id })
+          }
+        })
+      })
+      setSelectedItems(autoSelectItems)
+    }
+  }, [selectedShooting])
+
+  // 価格計算
+  const priceCalculation = useMemo(() => {
+    return calculateSimulatorPrice(selectedItems, campaigns)
+  }, [selectedItems, campaigns])
+
+  // Choice blockの価格計算
   const choiceTotalPrice = useMemo(() => {
     if (!formSchema) return 0
 
@@ -108,28 +96,39 @@ export default function SimulatorNew() {
       if (block.block_type === 'choice') {
         const selectedValue = choiceAnswers.get(block.id)
         if (selectedValue) {
-          const options = block.metadata?.choice_options || []
-          const selectedOption = options.find((opt) => opt.value === selectedValue)
-          if (selectedOption) {
-            total += selectedOption.price
+          // カテゴリ連動モードの場合
+          if (block.metadata?.auto_sync_category_id && selectedShooting) {
+            const category = selectedShooting.product_categories.find(
+              (pc) => pc.id === block.metadata.auto_sync_category_id
+            )
+            if (category && category.items) {
+              const selectedItem = category.items.find(
+                (item) => `item_${item.id}` === selectedValue
+              )
+              if (selectedItem) {
+                total += selectedItem.price
+              }
+            }
+          }
+          // 手動入力モードの場合
+          else if (block.metadata?.choice_options) {
+            const selectedOption = block.metadata.choice_options.find(
+              (opt) => opt.value === selectedValue
+            )
+            if (selectedOption) {
+              total += selectedOption.price
+            }
           }
         }
       }
     })
     return total
-  }, [formSchema, choiceAnswers])
-
-  // 価格計算
-  const priceCalculation = useMemo(() => {
-    const baseCalculation = calculateSimulatorPrice(selectedItems, campaigns)
-    // Choice ブロックの料金を加算
-    return {
-      ...baseCalculation,
-      total: baseCalculation.total + choiceTotalPrice,
-    }
-  }, [selectedItems, campaigns, choiceTotalPrice])
+  }, [formSchema, choiceAnswers, selectedShooting])
 
   const handleItemToggle = (item: Item, shootingCategoryId: number) => {
+    // 必須アイテムは選択解除できない
+    if (item.is_required) return
+
     setSelectedItems((prev) => {
       const exists = prev.find((i) => i.id === item.id)
       if (exists) {
@@ -143,8 +142,6 @@ export default function SimulatorNew() {
   const handleReset = () => {
     setSelectedShootingId(null)
     setSelectedItems([])
-    setYesNoAnswers(new Map())
-    setChoiceAnswers(new Map())
   }
 
   const activeCampaigns = campaigns.filter((c) => c.is_active)
@@ -175,19 +172,34 @@ export default function SimulatorNew() {
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-y border-orange-200">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <span className="text-sm font-semibold text-gray-700">🎉 現在実施中のキャンペーン</span>
-              {activeCampaigns.map((campaign, index) => (
-                <div key={campaign.id} className="flex items-center gap-2">
-                  {index > 0 && <span className="text-gray-300">|</span>}
-                  <span className="text-sm text-gray-800">{campaign.name}</span>
-                  <span className="text-sm font-bold text-orange-600">
-                    {campaign.discount_type === 'percentage'
-                      ? `${campaign.discount_value}% OFF`
-                      : `${formatPrice(campaign.discount_value)}引き`}
-                  </span>
+        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
+              現在実施中のキャンペーン
+            </p>
+            <div className="space-y-2">
+              {activeCampaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🎉</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">{campaign.name}</h3>
+                      <p className="text-xs text-gray-500">
+                        {new Date(campaign.start_date).toLocaleDateString('ja-JP')} 〜{' '}
+                        {new Date(campaign.end_date).toLocaleDateString('ja-JP')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-orange-600">
+                      {campaign.discount_type === 'percentage'
+                        ? `${campaign.discount_value}% OFF`
+                        : `${formatPrice(campaign.discount_value)} 引き`}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -213,7 +225,7 @@ export default function SimulatorNew() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
               >
                 <option value="">選択してください</option>
-                {shootingCategories.map((shooting) => (
+                {categoryStructure.map((shooting) => (
                   <option key={shooting.id} value={shooting.id}>
                     {shooting.display_name}
                   </option>
@@ -227,9 +239,9 @@ export default function SimulatorNew() {
             </div>
 
             {/* Form Blocks & Product Categories (Integrated) */}
-            {selectedShootingId && formSchema && formSchema.blocks.length > 0 && (
+            {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
-                {formSchema.blocks.map((block, index) => {
+                {formSchema.blocks.map((block) => {
                   // Check show_condition - 条件が設定されている場合
                   if (block.show_condition) {
                     // yes_no型の条件チェック
@@ -246,38 +258,14 @@ export default function SimulatorNew() {
                         return null
                       }
                     }
-                    // show_conditionがある場合は、それだけで表示/非表示が決まるので、
-                    // プログレッシブディスクロージャーは適用しない
-                  } else {
-                    // Progressive disclosure: show_conditionがなく、Yes/No/Choiceブロック以外の場合のみ適用
-                    if (block.block_type !== 'yes_no' && block.block_type !== 'choice' && block.block_type !== 'heading' && block.block_type !== 'text') {
-                      // このブロックより前のYes/No/Choiceブロックで未回答のものがあるか確認
-                      const hasUnansweredQuestion = formSchema.blocks
-                        .slice(0, index)
-                        .some(prevBlock => {
-                          if (prevBlock.block_type === 'yes_no') {
-                            const answer = yesNoAnswers.get(prevBlock.id)
-                            return answer === null || answer === undefined
-                          }
-                          if (prevBlock.block_type === 'choice') {
-                            const answer = choiceAnswers.get(prevBlock.id)
-                            return !answer
-                          }
-                          return false
-                        })
-
-                      if (hasUnansweredQuestion) {
-                        return null // 前のYes/No/Choice質問に答えていない場合は非表示
-                      }
-                    }
                   }
 
                   // Yes/No block
                   if (block.block_type === 'yes_no') {
                     const currentAnswer = yesNoAnswers.get(block.id)
                     return (
-                      <div key={block.id} className="border-2 border-blue-400 rounded-lg p-5 bg-blue-50 shadow-sm">
-                        <p className="text-gray-800 font-semibold mb-4 text-lg">{block.content}</p>
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4 bg-white">
+                        <p className="text-gray-800 font-medium mb-3">{block.content}</p>
                         <div className="flex gap-3">
                           <button
                             onClick={() => {
@@ -287,10 +275,10 @@ export default function SimulatorNew() {
                                 return newMap
                               })
                             }}
-                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
                               currentAnswer === 'yes'
-                                ? 'bg-blue-600 text-white shadow-md scale-105'
-                                : 'bg-white text-gray-700 hover:bg-blue-100 border-2 border-gray-300'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
                             はい
@@ -303,10 +291,10 @@ export default function SimulatorNew() {
                                 return newMap
                               })
                             }}
-                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
                               currentAnswer === 'no'
-                                ? 'bg-blue-600 text-white shadow-md scale-105'
-                                : 'bg-white text-gray-700 hover:bg-blue-100 border-2 border-gray-300'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
                             いいえ
@@ -320,12 +308,12 @@ export default function SimulatorNew() {
                   if (block.block_type === 'choice') {
                     // カテゴリ連動モードの場合、カテゴリのアイテムから選択肢を生成
                     let options = block.metadata?.choice_options || []
-                    if (block.metadata?.auto_sync_category_id) {
-                      const category = allProductCategories.find(
+                    if (block.metadata?.auto_sync_category_id && selectedShooting) {
+                      const category = selectedShooting.product_categories.find(
                         (pc) => pc.id === block.metadata.auto_sync_category_id
                       )
-                      if (category) {
-                        options = category.items.map(item => ({
+                      if (category && category.items) {
+                        options = category.items.map((item) => ({
                           value: `item_${item.id}`,
                           label: item.name,
                           price: item.price,
@@ -334,39 +322,41 @@ export default function SimulatorNew() {
                       }
                     }
 
+                    // 選択肢がない場合は何も表示しない
                     if (options.length === 0) {
                       return null
                     }
 
-                    const currentAnswer = choiceAnswers.get(block.id)
-                    const displayMode = block.metadata?.choice_display || 'auto'
+                    const currentValue = choiceAnswers.get(block.id)
 
-                    // 表示方式の決定: auto の場合は選択肢数で判定
-                    const useRadio = displayMode === 'radio' || (displayMode === 'auto' && options.length <= 3)
+                    // 表示モードを決定 (auto, radio, select)
+                    let displayMode = block.metadata?.choice_display || 'auto'
+                    if (displayMode === 'auto') {
+                      displayMode = options.length <= 3 ? 'radio' : 'select'
+                    }
 
                     return (
-                      <div key={block.id} className="border-2 border-purple-400 rounded-lg p-5 bg-purple-50 shadow-sm">
-                        <p className="text-gray-800 font-semibold mb-4 text-lg">{block.content}</p>
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4 bg-white">
+                        <p className="text-gray-800 font-medium mb-3">{block.content}</p>
 
-                        {useRadio ? (
-                          // ラジオボタン表示（2-3個）
-                          <div className="space-y-3">
-                            {options.map((option) => {
-                              const isSelected = currentAnswer === option.value
-                              return (
-                                <label
-                                  key={option.value}
-                                  className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                    isSelected
-                                      ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                                      : 'bg-white text-gray-700 border-gray-300 hover:bg-purple-100'
-                                  }`}
-                                >
+                        {displayMode === 'radio' ? (
+                          // ラジオボタン表示（2-3選択肢）
+                          <div className="space-y-2">
+                            {options.map((option) => (
+                              <label
+                                key={option.value}
+                                className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
+                                  currentValue === option.value
+                                    ? 'bg-blue-50 border-blue-500'
+                                    : 'border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center flex-1">
                                   <input
                                     type="radio"
                                     name={`choice-${block.id}`}
                                     value={option.value}
-                                    checked={isSelected}
+                                    checked={currentValue === option.value}
                                     onChange={() => {
                                       setChoiceAnswers(prev => {
                                         const newMap = new Map(prev)
@@ -374,53 +364,64 @@ export default function SimulatorNew() {
                                         return newMap
                                       })
                                     }}
-                                    className="mt-1 w-5 h-5 text-purple-600"
+                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 mr-3"
                                   />
-                                  <div className="ml-3 flex-1">
-                                    <div className="font-semibold">
-                                      {option.label}
-                                      {option.price > 0 && (
-                                        <span className="ml-2">
-                                          ({formatPrice(option.price)})
-                                        </span>
-                                      )}
-                                    </div>
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-800">{option.label}</span>
                                     {option.description && (
-                                      <p className={`text-sm mt-1 ${isSelected ? 'text-purple-100' : 'text-gray-600'}`}>
+                                      <span className="text-xs text-gray-500 block mt-1">
                                         {option.description}
-                                      </p>
+                                      </span>
                                     )}
                                   </div>
-                                </label>
-                              )
-                            })}
+                                </div>
+                                <span className="text-base font-semibold text-blue-600 ml-4">
+                                  {option.price > 0 ? `+${formatPrice(option.price)}` : formatPrice(option.price)}
+                                </span>
+                              </label>
+                            ))}
                           </div>
                         ) : (
-                          // ドロップダウン表示（4個以上）
-                          <select
-                            value={currentAnswer || ''}
-                            onChange={(e) => {
-                              const value = e.target.value
-                              setChoiceAnswers(prev => {
-                                const newMap = new Map(prev)
+                          // ドロップダウン表示（4+選択肢）
+                          <div>
+                            <select
+                              value={currentValue || ''}
+                              onChange={(e) => {
+                                const value = e.target.value
                                 if (value) {
-                                  newMap.set(block.id, value)
+                                  setChoiceAnswers(prev => {
+                                    const newMap = new Map(prev)
+                                    newMap.set(block.id, value)
+                                    return newMap
+                                  })
                                 } else {
-                                  newMap.delete(block.id)
+                                  setChoiceAnswers(prev => {
+                                    const newMap = new Map(prev)
+                                    newMap.delete(block.id)
+                                    return newMap
+                                  })
                                 }
-                                return newMap
-                              })
-                            }}
-                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors bg-white"
-                          >
-                            <option value="">選択してください</option>
-                            {options.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                                {option.price > 0 && ` (${formatPrice(option.price)})`}
-                              </option>
-                            ))}
-                          </select>
+                              }}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">選択してください</option>
+                              {options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label} ({option.price > 0 ? `+${formatPrice(option.price)}` : formatPrice(option.price)})
+                                </option>
+                              ))}
+                            </select>
+                            {currentValue && (
+                              <div className="mt-2 p-2 bg-blue-50 rounded">
+                                {(() => {
+                                  const selected = options.find(opt => opt.value === currentValue)
+                                  return selected?.description ? (
+                                    <p className="text-sm text-gray-600">{selected.description}</p>
+                                  ) : null
+                                })()}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )
@@ -459,18 +460,12 @@ export default function SimulatorNew() {
                   }
 
                   // Category reference block
-                  if (block.block_type === 'category_reference') {
-                    if (!block.metadata?.product_category_id) {
-                      return null
-                    }
-
-                    const productCategory = allProductCategories.find(
+                  if (block.block_type === 'category_reference' && block.metadata?.product_category_id) {
+                    const productCategory = selectedShooting.product_categories.find(
                       (pc) => pc.id === block.metadata.product_category_id
                     )
 
-                    if (!productCategory) {
-                      return null
-                    }
+                    if (!productCategory) return null
 
                     return (
                       <div key={block.id}>
@@ -492,22 +487,32 @@ export default function SimulatorNew() {
                                 return (
                                   <label
                                     key={item.id}
-                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors hover:bg-blue-50 cursor-pointer bg-white"
+                                    className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
+                                      item.is_required
+                                        ? 'bg-blue-50 border-blue-300'
+                                        : 'hover:bg-blue-50 cursor-pointer bg-white'
+                                    }`}
                                   >
                                     <div className="flex items-center flex-1">
                                       <input
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() =>
-                                          handleItemToggle(item, selectedShootingId || 0)
+                                          handleItemToggle(item, selectedShooting.id)
                                         }
-                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
+                                        disabled={item.is_required}
+                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
                                       />
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                           <span className="font-medium text-gray-800">
                                             {item.name}
                                           </span>
+                                          {item.is_required && (
+                                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                              必須
+                                            </span>
+                                          )}
                                         </div>
                                         {item.description && (
                                           <span className="text-xs text-gray-500 block mt-1">
@@ -532,13 +537,84 @@ export default function SimulatorNew() {
                   return null
                 })}
               </div>
+            ) : (
+              // Fallback: Show all product categories if no form blocks
+              selectedShooting && (
+              <div className="mb-6">
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  オプション（複数選択可）
+                </label>
+                <div className="space-y-4">
+                  {selectedShooting.product_categories.map((productCategory) => (
+                    <div key={productCategory.id}>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-300">
+                        {productCategory.display_name}
+                      </h3>
+                      {productCategory.items.length === 0 ? (
+                        <p className="text-sm text-gray-500 py-2">
+                          このカテゴリにアイテムはありません
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {productCategory.items.map((item) => {
+                            const isSelected = selectedItems.some((i) => i.id === item.id)
+                            return (
+                              <label
+                                key={item.id}
+                                className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
+                                  item.is_required
+                                    ? 'bg-blue-50 border-blue-300'
+                                    : 'hover:bg-blue-50 cursor-pointer'
+                                }`}
+                              >
+                                <div className="flex items-center flex-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() =>
+                                      handleItemToggle(item, selectedShooting.id)
+                                    }
+                                    disabled={item.is_required}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-gray-800">
+                                        {item.name}
+                                      </span>
+                                      {item.is_required && (
+                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                          必須
+                                        </span>
+                                      )}
+                                    </div>
+                                    {item.description && (
+                                      <span className="text-xs text-gray-500 block mt-1">
+                                        {item.description}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-base font-semibold text-blue-600 ml-4">
+                                  {formatPrice(item.price)}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              )
             )}
           </div>
         </div>
       </section>
 
       {/* Price Summary - Sticky Bottom */}
-      {(selectedItems.length > 0 || choiceTotalPrice > 0) && (
+      {selectedItems.length > 0 && (
         <div className="sticky bottom-0 bg-white border-t-2 border-blue-300 shadow-xl z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {priceCalculation.appliedCampaign && (
@@ -554,7 +630,7 @@ export default function SimulatorNew() {
                 <span className="text-lg font-bold text-gray-800">合計</span>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600">
-                    {formatPrice(priceCalculation.total)}
+                    {formatPrice(priceCalculation.total + choiceTotalPrice)}
                   </div>
                   <div className="text-xs text-gray-500">（税込）</div>
                 </div>
