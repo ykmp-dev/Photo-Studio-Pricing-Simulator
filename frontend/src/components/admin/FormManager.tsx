@@ -8,6 +8,7 @@ import {
   createFormBlock,
   updateFormBlock,
   deleteFormBlock,
+  updateBlocksOrder,
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks } from '../../types/formBuilder'
@@ -190,6 +191,48 @@ export default function FormManager({ shopId }: FormManagerProps) {
     }
   }
 
+  const handleMoveBlockUp = async (index: number) => {
+    if (!selectedForm || index === 0) return
+
+    const newBlocks = [...selectedForm.blocks]
+    ;[newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]]
+
+    // UIを即座に更新
+    setSelectedForm({ ...selectedForm, blocks: newBlocks })
+
+    // サーバーに保存
+    try {
+      await updateBlocksOrder(newBlocks.map((b) => b.id))
+    } catch (err) {
+      console.error(err)
+      alert('並び順の更新に失敗しました')
+      if (selectedFormId) {
+        await loadFormWithBlocks(selectedFormId) // 失敗したら元に戻す
+      }
+    }
+  }
+
+  const handleMoveBlockDown = async (index: number) => {
+    if (!selectedForm || index === selectedForm.blocks.length - 1) return
+
+    const newBlocks = [...selectedForm.blocks]
+    ;[newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]]
+
+    // UIを即座に更新
+    setSelectedForm({ ...selectedForm, blocks: newBlocks })
+
+    // サーバーに保存
+    try {
+      await updateBlocksOrder(newBlocks.map((b) => b.id))
+    } catch (err) {
+      console.error(err)
+      alert('並び順の更新に失敗しました')
+      if (selectedFormId) {
+        await loadFormWithBlocks(selectedFormId) // 失敗したら元に戻す
+      }
+    }
+  }
+
   const resetFormForm = () => {
     setFormName('')
     setFormDescription('')
@@ -224,7 +267,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
     const labels: Record<BlockType, string> = {
       text: 'テキスト',
       heading: '見出し',
-      list: 'リスト',
+      list: 'リスト', // 非推奨だが、既存データのため残す
       category_reference: 'カテゴリ参照',
     }
     return labels[type]
@@ -397,7 +440,6 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       >
                         <option value="text">テキスト</option>
                         <option value="heading">見出し</option>
-                        <option value="list">リスト</option>
                         <option value="category_reference">カテゴリ参照</option>
                       </select>
                     </div>
@@ -435,8 +477,6 @@ export default function FormManager({ shopId }: FormManagerProps) {
                         placeholder={
                           blockType === 'heading'
                             ? '## 見出しテキスト'
-                            : blockType === 'list'
-                            ? '- アイテム1\n- アイテム2\n- アイテム3'
                             : blockType === 'category_reference'
                             ? '説明テキスト（任意）'
                             : 'テキストを入力'
@@ -482,7 +522,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     <p className="text-sm text-gray-500">ブロックがまだありません</p>
                   ) : (
                     <div className="space-y-2">
-                      {selectedForm.blocks.map((block) => (
+                      {selectedForm.blocks.map((block, index) => (
                         <div key={block.id} className="border border-gray-200 rounded p-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
@@ -494,6 +534,22 @@ export default function FormManager({ shopId }: FormManagerProps) {
                               </p>
                             </div>
                             <div className="flex gap-1 ml-2">
+                              <button
+                                onClick={() => handleMoveBlockUp(index)}
+                                disabled={index === 0}
+                                className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded disabled:text-gray-300 disabled:cursor-not-allowed"
+                                title="上へ"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => handleMoveBlockDown(index)}
+                                disabled={index === selectedForm.blocks.length - 1}
+                                className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded disabled:text-gray-300 disabled:cursor-not-allowed"
+                                title="下へ"
+                              >
+                                ↓
+                              </button>
                               <button
                                 onClick={() => startEditBlock(block)}
                                 className="text-blue-600 hover:text-blue-700 text-xs px-2"
