@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { ShootingCategoryWithProducts, Item } from '../types/category'
+import type { ShootingCategory, ProductCategoryWithItems, Item } from '../types/category'
 import type { CampaignWithAssociations } from '../types/campaign'
 import type { FormSchemaWithBlocks } from '../types/formBuilder'
-import { getSimulatorData, calculateSimulatorPrice } from '../services/simulatorService'
+import { calculateSimulatorPrice } from '../services/simulatorService'
 import { getFormByShootingCategory } from '../services/formBuilderService'
+import { getShootingCategories, getProductCategories, getItems } from '../services/categoryService'
+import { getCampaigns, getCampaignWithAssociations } from '../services/campaignService'
 import { formatPrice } from '../utils/priceCalculator'
 import Header from './Header'
 import Footer from './Footer'
@@ -11,7 +13,8 @@ import Footer from './Footer'
 export default function SimulatorNew() {
   const shopId = 1 // TODO: Get from config or context
 
-  const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
+  const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
+  const [allProductCategories, setAllProductCategories] = useState<ProductCategoryWithItems[]>([])
   const [campaigns, setCampaigns] = useState<CampaignWithAssociations[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -30,9 +33,34 @@ export default function SimulatorNew() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const data = await getSimulatorData(shopId)
-      setCategoryStructure(data.categoryStructure)
-      setCampaigns(data.campaigns)
+
+      // すべての商品カテゴリとアイテムを取得
+      const [shootingCats, productCats, campaignsData] = await Promise.all([
+        getShootingCategories(shopId),
+        getProductCategories(shopId),
+        getCampaigns(shopId),
+      ])
+
+      // 各商品カテゴリのアイテムを取得
+      const productCategoriesWithItems = await Promise.all(
+        productCats.map(async (category) => {
+          const items = await getItems(shopId, category.id)
+          return {
+            ...category,
+            items,
+          }
+        })
+      )
+
+      // アクティブなキャンペーンの関連付けを取得
+      const activeCampaigns = campaignsData.filter((c) => c.is_active)
+      const campaignsWithAssociations: CampaignWithAssociations[] = await Promise.all(
+        activeCampaigns.map((c) => getCampaignWithAssociations(c.id))
+      ).then((results) => results.filter((r): r is CampaignWithAssociations => r !== null))
+
+      setShootingCategories(shootingCats)
+      setAllProductCategories(productCategoriesWithItems)
+      setCampaigns(campaignsWithAssociations)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -43,8 +71,8 @@ export default function SimulatorNew() {
 
   // 選択された撮影カテゴリ
   const selectedShooting = useMemo(() => {
-    return categoryStructure.find((s) => s.id === selectedShootingId) || null
-  }, [categoryStructure, selectedShootingId])
+    return shootingCategories.find((s) => s.id === selectedShootingId) || null
+  }, [shootingCategories, selectedShootingId])
 
   // 撮影カテゴリ選択時にフォームを読み込み
   useEffect(() => {
@@ -116,34 +144,19 @@ export default function SimulatorNew() {
 
       {/* Campaign Section */}
       {activeCampaigns.length > 0 && (
-        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-              現在実施中のキャンペーン
-            </p>
-            <div className="space-y-2">
-              {activeCampaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🎉</span>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-800">{campaign.name}</h3>
-                      <p className="text-xs text-gray-500">
-                        {new Date(campaign.start_date).toLocaleDateString('ja-JP')} 〜{' '}
-                        {new Date(campaign.end_date).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-orange-600">
-                      {campaign.discount_type === 'percentage'
-                        ? `${campaign.discount_value}% OFF`
-                        : `${formatPrice(campaign.discount_value)} 引き`}
-                    </span>
-                  </div>
+        <section className="bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-y border-orange-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <span className="text-sm font-semibold text-gray-700">🎉 現在実施中のキャンペーン</span>
+              {activeCampaigns.map((campaign, index) => (
+                <div key={campaign.id} className="flex items-center gap-2">
+                  {index > 0 && <span className="text-gray-300">|</span>}
+                  <span className="text-sm text-gray-800">{campaign.name}</span>
+                  <span className="text-sm font-bold text-orange-600">
+                    {campaign.discount_type === 'percentage'
+                      ? `${campaign.discount_value}% OFF`
+                      : `${formatPrice(campaign.discount_value)}引き`}
+                  </span>
                 </div>
               ))}
             </div>
@@ -169,7 +182,7 @@ export default function SimulatorNew() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
               >
                 <option value="">選択してください</option>
-                {categoryStructure.map((shooting) => (
+                {shootingCategories.map((shooting) => (
                   <option key={shooting.id} value={shooting.id}>
                     {shooting.display_name}
                   </option>
@@ -183,7 +196,7 @@ export default function SimulatorNew() {
             </div>
 
             {/* Form Blocks & Product Categories (Integrated) */}
-            {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
+            {selectedShootingId && formSchema && formSchema.blocks.length > 0 && (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block, index) => {
                   // Check show_condition - 条件が設定されている場合
@@ -297,7 +310,7 @@ export default function SimulatorNew() {
                       return null
                     }
 
-                    const productCategory = selectedShooting.product_categories.find(
+                    const productCategory = allProductCategories.find(
                       (pc) => pc.id === block.metadata.product_category_id
                     )
 
@@ -332,7 +345,7 @@ export default function SimulatorNew() {
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() =>
-                                          handleItemToggle(item, selectedShooting.id)
+                                          handleItemToggle(item, selectedShootingId || 0)
                                         }
                                         className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
                                       />
@@ -365,67 +378,6 @@ export default function SimulatorNew() {
                   return null
                 })}
               </div>
-            ) : (
-              // Fallback: Show all product categories if no form blocks
-              selectedShooting && (
-              <div className="mb-6">
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  オプション（複数選択可）
-                </label>
-                <div className="space-y-4">
-                  {selectedShooting.product_categories.map((productCategory) => (
-                    <div key={productCategory.id}>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-300">
-                        {productCategory.display_name}
-                      </h3>
-                      {productCategory.items.length === 0 ? (
-                        <p className="text-sm text-gray-500 py-2">
-                          このカテゴリにアイテムはありません
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {productCategory.items.map((item) => {
-                            const isSelected = selectedItems.some((i) => i.id === item.id)
-                            return (
-                              <label
-                                key={item.id}
-                                className="flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors hover:bg-blue-50 cursor-pointer"
-                              >
-                                <div className="flex items-center flex-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() =>
-                                      handleItemToggle(item, selectedShooting.id)
-                                    }
-                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-gray-800">
-                                        {item.name}
-                                      </span>
-                                    </div>
-                                    {item.description && (
-                                      <span className="text-xs text-gray-500 block mt-1">
-                                        {item.description}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <span className="text-base font-semibold text-blue-600 ml-4">
-                                  {formatPrice(item.price)}
-                                </span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              )
             )}
           </div>
         </div>
