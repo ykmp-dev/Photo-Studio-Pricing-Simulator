@@ -25,6 +25,8 @@ export default function SimulatorNew() {
   const [formSchema, setFormSchema] = useState<FormSchemaWithBlocks | null>(null)
   // Yes/No answers: Map<block_id, 'yes' | 'no' | null>
   const [yesNoAnswers, setYesNoAnswers] = useState<Map<number, 'yes' | 'no' | null>>(new Map())
+  // Choice answers: Map<block_id, option.value>
+  const [choiceAnswers, setChoiceAnswers] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     loadData()
@@ -79,9 +81,11 @@ export default function SimulatorNew() {
     if (selectedShootingId) {
       loadForm(selectedShootingId)
       setYesNoAnswers(new Map()) // Yes/No回答をリセット
+      setChoiceAnswers(new Map()) // Choice回答をリセット
     } else {
       setFormSchema(null)
       setYesNoAnswers(new Map())
+      setChoiceAnswers(new Map()) // Choice回答をリセット
     }
   }, [selectedShootingId])
 
@@ -95,10 +99,35 @@ export default function SimulatorNew() {
     }
   }
 
+  // Choice ブロックで選択された料金の合計
+  const choiceTotalPrice = useMemo(() => {
+    if (!formSchema) return 0
+
+    let total = 0
+    formSchema.blocks.forEach((block) => {
+      if (block.block_type === 'choice') {
+        const selectedValue = choiceAnswers.get(block.id)
+        if (selectedValue) {
+          const options = block.metadata?.choice_options || []
+          const selectedOption = options.find((opt) => opt.value === selectedValue)
+          if (selectedOption) {
+            total += selectedOption.price
+          }
+        }
+      }
+    })
+    return total
+  }, [formSchema, choiceAnswers])
+
   // 価格計算
   const priceCalculation = useMemo(() => {
-    return calculateSimulatorPrice(selectedItems, campaigns)
-  }, [selectedItems, campaigns])
+    const baseCalculation = calculateSimulatorPrice(selectedItems, campaigns)
+    // Choice ブロックの料金を加算
+    return {
+      ...baseCalculation,
+      total: baseCalculation.total + choiceTotalPrice,
+    }
+  }, [selectedItems, campaigns, choiceTotalPrice])
 
   const handleItemToggle = (item: Item, shootingCategoryId: number) => {
     setSelectedItems((prev) => {
@@ -114,6 +143,8 @@ export default function SimulatorNew() {
   const handleReset = () => {
     setSelectedShootingId(null)
     setSelectedItems([])
+    setYesNoAnswers(new Map())
+    setChoiceAnswers(new Map())
   }
 
   const activeCampaigns = campaigns.filter((c) => c.is_active)
@@ -201,29 +232,42 @@ export default function SimulatorNew() {
                 {formSchema.blocks.map((block, index) => {
                   // Check show_condition - 条件が設定されている場合
                   if (block.show_condition) {
-                    const requiredAnswer = yesNoAnswers.get(block.show_condition.block_id)
-                    // 条件が満たされていない場合は非表示
-                    if (requiredAnswer !== block.show_condition.value) {
-                      return null
+                    // yes_no型の条件チェック
+                    if (block.show_condition.type === 'yes_no') {
+                      const requiredAnswer = yesNoAnswers.get(block.show_condition.block_id)
+                      if (requiredAnswer !== block.show_condition.value) {
+                        return null
+                      }
+                    }
+                    // choice型の条件チェック
+                    else if (block.show_condition.type === 'choice') {
+                      const requiredAnswer = choiceAnswers.get(block.show_condition.block_id)
+                      if (requiredAnswer !== block.show_condition.value) {
+                        return null
+                      }
                     }
                     // show_conditionがある場合は、それだけで表示/非表示が決まるので、
                     // プログレッシブディスクロージャーは適用しない
                   } else {
-                    // Progressive disclosure: show_conditionがなく、Yes/Noブロック以外の場合のみ適用
-                    if (block.block_type !== 'yes_no' && block.block_type !== 'heading' && block.block_type !== 'text') {
-                      // このブロックより前のYes/Noブロックで未回答のものがあるか確認
-                      const hasUnansweredYesNo = formSchema.blocks
+                    // Progressive disclosure: show_conditionがなく、Yes/No/Choiceブロック以外の場合のみ適用
+                    if (block.block_type !== 'yes_no' && block.block_type !== 'choice' && block.block_type !== 'heading' && block.block_type !== 'text') {
+                      // このブロックより前のYes/No/Choiceブロックで未回答のものがあるか確認
+                      const hasUnansweredQuestion = formSchema.blocks
                         .slice(0, index)
                         .some(prevBlock => {
                           if (prevBlock.block_type === 'yes_no') {
                             const answer = yesNoAnswers.get(prevBlock.id)
                             return answer === null || answer === undefined
                           }
+                          if (prevBlock.block_type === 'choice') {
+                            const answer = choiceAnswers.get(prevBlock.id)
+                            return !answer
+                          }
                           return false
                         })
 
-                      if (hasUnansweredYesNo) {
-                        return null // 前のYes/No質問に答えていない場合は非表示
+                      if (hasUnansweredQuestion) {
+                        return null // 前のYes/No/Choice質問に答えていない場合は非表示
                       }
                     }
                   }
@@ -268,6 +312,101 @@ export default function SimulatorNew() {
                             いいえ
                           </button>
                         </div>
+                      </div>
+                    )
+                  }
+
+                  // Choice block
+                  if (block.block_type === 'choice') {
+                    const options = block.metadata?.choice_options || []
+                    if (options.length === 0) {
+                      return null
+                    }
+
+                    const currentAnswer = choiceAnswers.get(block.id)
+                    const displayMode = block.metadata?.choice_display || 'auto'
+
+                    // 表示方式の決定: auto の場合は選択肢数で判定
+                    const useRadio = displayMode === 'radio' || (displayMode === 'auto' && options.length <= 3)
+
+                    return (
+                      <div key={block.id} className="border-2 border-purple-400 rounded-lg p-5 bg-purple-50 shadow-sm">
+                        <p className="text-gray-800 font-semibold mb-4 text-lg">{block.content}</p>
+
+                        {useRadio ? (
+                          // ラジオボタン表示（2-3個）
+                          <div className="space-y-3">
+                            {options.map((option) => {
+                              const isSelected = currentAnswer === option.value
+                              return (
+                                <label
+                                  key={option.value}
+                                  className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                                      : 'bg-white text-gray-700 border-gray-300 hover:bg-purple-100'
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`choice-${block.id}`}
+                                    value={option.value}
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      setChoiceAnswers(prev => {
+                                        const newMap = new Map(prev)
+                                        newMap.set(block.id, option.value)
+                                        return newMap
+                                      })
+                                    }}
+                                    className="mt-1 w-5 h-5 text-purple-600"
+                                  />
+                                  <div className="ml-3 flex-1">
+                                    <div className="font-semibold">
+                                      {option.label}
+                                      {option.price > 0 && (
+                                        <span className="ml-2">
+                                          ({formatPrice(option.price)})
+                                        </span>
+                                      )}
+                                    </div>
+                                    {option.description && (
+                                      <p className={`text-sm mt-1 ${isSelected ? 'text-purple-100' : 'text-gray-600'}`}>
+                                        {option.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          // ドロップダウン表示（4個以上）
+                          <select
+                            value={currentAnswer || ''}
+                            onChange={(e) => {
+                              const value = e.target.value
+                              setChoiceAnswers(prev => {
+                                const newMap = new Map(prev)
+                                if (value) {
+                                  newMap.set(block.id, value)
+                                } else {
+                                  newMap.delete(block.id)
+                                }
+                                return newMap
+                              })
+                            }}
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors bg-white"
+                          >
+                            <option value="">選択してください</option>
+                            {options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                                {option.price > 0 && ` (${formatPrice(option.price)})`}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     )
                   }
@@ -384,7 +523,7 @@ export default function SimulatorNew() {
       </section>
 
       {/* Price Summary - Sticky Bottom */}
-      {selectedItems.length > 0 && (
+      {(selectedItems.length > 0 || choiceTotalPrice > 0) && (
         <div className="sticky bottom-0 bg-white border-t-2 border-blue-300 shadow-xl z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {priceCalculation.appliedCampaign && (
