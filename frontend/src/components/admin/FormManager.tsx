@@ -9,7 +9,7 @@ import {
   updateFormBlock,
   deleteFormBlock,
 } from '../../services/formBuilderService'
-import { getShootingCategories } from '../../services/categoryService'
+import { getShootingCategories, getProductCategories } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks } from '../../types/formBuilder'
 import type { ShootingCategory } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
@@ -21,6 +21,7 @@ interface FormManagerProps {
 export default function FormManager({ shopId }: FormManagerProps) {
   const [forms, setForms] = useState<FormSchema[]>([])
   const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
+  const [productCategories, setProductCategories] = useState<any[]>([])
   const [selectedFormId, setSelectedFormId] = useState<number | null>(null)
   const [selectedForm, setSelectedForm] = useState<FormSchemaWithBlocks | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +37,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [editingBlockId, setEditingBlockId] = useState<number | null>(null)
   const [blockType, setBlockType] = useState<BlockType>('text')
   const [blockContent, setBlockContent] = useState('')
+  const [blockProductCategoryId, setBlockProductCategoryId] = useState<number | null>(null)
 
   useEffect(() => {
     loadData()
@@ -50,12 +52,14 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [formsData, categoriesData] = await Promise.all([
+      const [formsData, categoriesData, productCategoriesData] = await Promise.all([
         getFormSchemas(shopId),
         getShootingCategories(shopId),
+        getProductCategories(shopId),
       ])
       setForms(formsData)
       setShootingCategories(categoriesData)
+      setProductCategories(productCategoriesData)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
       alert('データの読み込みに失敗しました')
@@ -139,6 +143,9 @@ export default function FormManager({ shopId }: FormManagerProps) {
         form_schema_id: selectedFormId,
         block_type: blockType,
         content: blockContent || undefined,
+        metadata: blockType === 'category_reference' && blockProductCategoryId
+          ? { product_category_id: blockProductCategoryId }
+          : {},
       })
       resetBlockForm()
       await loadFormWithBlocks(selectedFormId)
@@ -154,6 +161,9 @@ export default function FormManager({ shopId }: FormManagerProps) {
       await updateFormBlock(id, {
         block_type: blockType,
         content: blockContent || undefined,
+        metadata: blockType === 'category_reference' && blockProductCategoryId
+          ? { product_category_id: blockProductCategoryId }
+          : {},
       })
       resetBlockForm()
       if (selectedFormId) {
@@ -191,6 +201,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const resetBlockForm = () => {
     setBlockType('text')
     setBlockContent('')
+    setBlockProductCategoryId(null)
     setEditingBlockId(null)
   }
 
@@ -205,6 +216,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const startEditBlock = (block: FormBlock) => {
     setBlockType(block.block_type)
     setBlockContent(block.content || '')
+    setBlockProductCategoryId(block.metadata?.product_category_id || null)
     setEditingBlockId(block.id)
   }
 
@@ -390,9 +402,30 @@ export default function FormManager({ shopId }: FormManagerProps) {
                       </select>
                     </div>
 
+                    {blockType === 'category_reference' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          商品カテゴリ <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={blockProductCategoryId || ''}
+                          onChange={(e) => setBlockProductCategoryId(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                          required
+                        >
+                          <option value="">選択してください</option>
+                          {productCategories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.display_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        内容 <span className="text-red-500">*</span>
+                        内容 {blockType !== 'category_reference' && <span className="text-red-500">*</span>}
                       </label>
                       <textarea
                         value={blockContent}
@@ -404,9 +437,11 @@ export default function FormManager({ shopId }: FormManagerProps) {
                             ? '## 見出しテキスト'
                             : blockType === 'list'
                             ? '- アイテム1\n- アイテム2\n- アイテム3'
+                            : blockType === 'category_reference'
+                            ? '説明テキスト（任意）'
                             : 'テキストを入力'
                         }
-                        required
+                        required={blockType !== 'category_reference'}
                       />
                     </div>
 

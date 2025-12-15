@@ -196,10 +196,11 @@ export default function SimulatorNew() {
               )}
             </div>
 
-            {/* Form Blocks */}
-            {formSchema && formSchema.blocks.length > 0 && (
+            {/* Form Blocks & Product Categories (Integrated) */}
+            {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block) => {
+                  // Heading block
                   if (block.block_type === 'heading') {
                     return (
                       <div key={block.id}>
@@ -210,6 +211,7 @@ export default function SimulatorNew() {
                     )
                   }
 
+                  // Text block
                   if (block.block_type === 'text') {
                     return (
                       <div key={block.id} className="text-gray-700">
@@ -218,6 +220,7 @@ export default function SimulatorNew() {
                     )
                   }
 
+                  // List block
                   if (block.block_type === 'list') {
                     const items = block.content?.split('\n').filter((line) => line.trim()) || []
                     return (
@@ -229,14 +232,87 @@ export default function SimulatorNew() {
                     )
                   }
 
-                  // category_reference blocks are handled in the product categories section
+                  // Category reference block
+                  if (block.block_type === 'category_reference' && block.metadata?.product_category_id) {
+                    const productCategory = selectedShooting.product_categories.find(
+                      (pc) => pc.id === block.metadata.product_category_id
+                    )
+
+                    if (!productCategory) return null
+
+                    return (
+                      <div key={block.id}>
+                        {block.content && (
+                          <p className="text-sm text-gray-600 mb-2">{block.content}</p>
+                        )}
+                        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-300">
+                            {productCategory.display_name}
+                          </h3>
+                          {productCategory.items.length === 0 ? (
+                            <p className="text-sm text-gray-500 py-2">
+                              このカテゴリにアイテムはありません
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {productCategory.items.map((item) => {
+                                const isSelected = selectedItems.some((i) => i.id === item.id)
+                                return (
+                                  <label
+                                    key={item.id}
+                                    className={`flex items-center justify-between p-3 border border-gray-200 rounded-md transition-colors ${
+                                      item.is_required
+                                        ? 'bg-blue-50 border-blue-300'
+                                        : 'hover:bg-blue-50 cursor-pointer bg-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center flex-1">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() =>
+                                          handleItemToggle(item, selectedShooting.id)
+                                        }
+                                        disabled={item.is_required}
+                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3 disabled:opacity-50"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-gray-800">
+                                            {item.name}
+                                          </span>
+                                          {item.is_required && (
+                                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                              必須
+                                            </span>
+                                          )}
+                                        </div>
+                                        {item.description && (
+                                          <span className="text-xs text-gray-500 block mt-1">
+                                            {item.description}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <span className="text-base font-semibold text-blue-600 ml-4">
+                                      {formatPrice(item.price)}
+                                    </span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
+
                   return null
                 })}
               </div>
-            )}
-
-            {/* Product Categories & Items */}
-            {selectedShooting && (
+            ) : (
+              // Fallback: Show all product categories if no form blocks
+              selectedShooting && (
               <div className="mb-6">
                 <label className="block text-base font-semibold text-gray-800 mb-3">
                   オプション（複数選択可）
