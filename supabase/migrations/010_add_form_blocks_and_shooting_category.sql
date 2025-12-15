@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS form_blocks (
 -- ========== RLSポリシー設定 ==========
 ALTER TABLE form_blocks ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除してから作成
+DROP POLICY IF EXISTS "Anyone can view form blocks" ON form_blocks;
+DROP POLICY IF EXISTS "Authenticated users can insert form blocks" ON form_blocks;
+DROP POLICY IF EXISTS "Authenticated users can update form blocks" ON form_blocks;
+DROP POLICY IF EXISTS "Authenticated users can delete form blocks" ON form_blocks;
+
 -- 読み取りは誰でもOK
 CREATE POLICY "Anyone can view form blocks"
 ON form_blocks FOR SELECT USING (true);
