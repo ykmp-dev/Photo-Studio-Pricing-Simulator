@@ -41,7 +41,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formPrice, setFormPrice] = useState(0)
-  const [formIsRequired, setFormIsRequired] = useState(false)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
 
   useEffect(() => {
@@ -128,7 +127,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
-        is_required: formIsRequired,
         auto_select: formAutoSelect,
       })
       resetForm()
@@ -178,7 +176,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
         name: formDisplayName,
         price: formPrice,
         description: formDescription || undefined,
-        is_required: formIsRequired,
         auto_select: formAutoSelect,
       })
       resetForm()
@@ -231,7 +228,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName('')
     setFormDescription('')
     setFormPrice(0)
-    setFormIsRequired(false)
     setFormAutoSelect(false)
     setEditingShootingId(null)
     setEditingProductId(null)
@@ -256,7 +252,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setFormDisplayName(item.name)
     setFormPrice(item.price)
     setFormDescription(item.description || '')
-    setFormIsRequired(item.is_required)
     setFormAutoSelect(item.auto_select)
     setEditingItemId(item.id)
   }
@@ -601,17 +596,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                       自動選択（商品カテゴリ選択時に自動で選択）
                     </span>
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formIsRequired}
-                      onChange={(e) => setFormIsRequired(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded"
-                    />
-                    <span className="text-sm text-gray-700">
-                      必須（選択解除不可）
-                    </span>
-                  </label>
                 </div>
                 <div className="flex gap-2">
                   {editingItemId ? (
@@ -662,11 +646,6 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                           {item.auto_select && (
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                               自動選択
-                            </span>
-                          )}
-                          {item.is_required && (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                              必須
                             </span>
                           )}
                         </div>
