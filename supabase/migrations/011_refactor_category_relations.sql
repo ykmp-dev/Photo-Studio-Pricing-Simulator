@@ -40,18 +40,27 @@ BEGIN
 END $$;
 
 -- 2. 既存のproduct_categoriesのshooting_category_idデータを関連テーブルに移行
+-- （カラムが存在する場合のみ）
 DO $$
 BEGIN
-  -- shooting_category_idが設定されている商品カテゴリを関連テーブルに移行
-  INSERT INTO shooting_product_associations (shooting_category_id, product_category_id, sort_order, is_required)
-  SELECT
-    shooting_category_id,
-    id as product_category_id,
-    ROW_NUMBER() OVER (PARTITION BY shooting_category_id ORDER BY id) - 1 as sort_order,
-    FALSE as is_required
-  FROM product_categories
-  WHERE shooting_category_id IS NOT NULL
-  ON CONFLICT (shooting_category_id, product_category_id) DO NOTHING;
+  -- shooting_category_idカラムが存在するかチェック
+  IF EXISTS (
+    SELECT FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'product_categories'
+    AND column_name = 'shooting_category_id'
+  ) THEN
+    -- shooting_category_idが設定されている商品カテゴリを関連テーブルに移行
+    INSERT INTO shooting_product_associations (shooting_category_id, product_category_id, sort_order, is_required)
+    SELECT
+      shooting_category_id,
+      id as product_category_id,
+      ROW_NUMBER() OVER (PARTITION BY shooting_category_id ORDER BY id) - 1 as sort_order,
+      FALSE as is_required
+    FROM product_categories
+    WHERE shooting_category_id IS NOT NULL
+    ON CONFLICT (shooting_category_id, product_category_id) DO NOTHING;
+  END IF;
 END $$;
 
 -- 3. product_categoriesのshooting_category_idカラムを削除
