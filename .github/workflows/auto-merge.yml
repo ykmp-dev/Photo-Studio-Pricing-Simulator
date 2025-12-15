@@ -44,13 +44,32 @@ jobs:
             echo "Created PR #$PR_NUMBER"
           fi
 
-          # PRがマージ可能か確認
+          # PRがマージ可能か確認（リトライロジック付き）
           echo "Checking if PR #$PR_NUMBER is mergeable..."
-          MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable')
-          echo "Mergeable status: $MERGEABLE"
 
-          if [ "$MERGEABLE" != "MERGEABLE" ]; then
+          # UNKNOWN状態の場合、最大5回リトライ（各5秒待機）
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          MERGEABLE="UNKNOWN"
+
+          while [ "$MERGEABLE" = "UNKNOWN" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if [ $RETRY_COUNT -gt 0 ]; then
+              echo "Waiting for GitHub to determine mergeable status... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+              sleep 5
+            fi
+
+            MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable')
+            echo "Mergeable status: $MERGEABLE"
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+
+          # まだUNKNOWNの場合、マージを試みる（失敗したらエラーメッセージが出る）
+          if [ "$MERGEABLE" = "UNKNOWN" ]; then
+            echo "⚠️ Mergeable status is still UNKNOWN after $MAX_RETRIES attempts."
+            echo "Attempting to merge anyway..."
+          elif [ "$MERGEABLE" != "MERGEABLE" ]; then
             echo "❌ PR #$PR_NUMBER cannot be merged automatically."
+            echo "Mergeable status: $MERGEABLE"
             echo "Possible reasons:"
             echo "  - The branch is behind main"
             echo "  - There are merge conflicts"
