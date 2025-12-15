@@ -44,7 +44,23 @@ jobs:
             echo "Created PR #$PR_NUMBER"
           fi
 
-          # PRを即座にマージ
+          # PRがマージ可能か確認
+          echo "Checking if PR #$PR_NUMBER is mergeable..."
+          MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable')
+          echo "Mergeable status: $MERGEABLE"
+
+          if [ "$MERGEABLE" != "MERGEABLE" ]; then
+            echo "❌ PR #$PR_NUMBER cannot be merged automatically."
+            echo "Possible reasons:"
+            echo "  - The branch is behind main"
+            echo "  - There are merge conflicts"
+            echo "  - Required status checks are not passing"
+            echo ""
+            echo "Please check the PR: https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+            exit 1
+          fi
+
+          # PRをマージ
           echo "Merging PR #$PR_NUMBER..."
           gh pr merge $PR_NUMBER --merge --delete-branch
 
