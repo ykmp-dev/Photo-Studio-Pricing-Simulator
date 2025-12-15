@@ -309,15 +309,15 @@ export default function SimulatorNew() {
 
                   // Category reference block
                   if (block.block_type === 'category_reference') {
+                    const availableCategories = selectedShooting.product_categories.map(pc => ({ id: pc.id, name: pc.display_name }))
                     console.log('Category reference block:', {
                       block_id: block.id,
-                      metadata: block.metadata,
-                      product_category_id: block.metadata?.product_category_id,
-                      available_categories: selectedShooting.product_categories.map(pc => ({ id: pc.id, name: pc.display_name }))
+                      looking_for_id: block.metadata?.product_category_id,
+                      available_categories: availableCategories
                     })
 
                     if (!block.metadata?.product_category_id) {
-                      console.warn('Block has no product_category_id in metadata:', block.id)
+                      console.warn('❌ Block has no product_category_id in metadata:', block.id)
                       return null
                     }
 
@@ -326,9 +326,15 @@ export default function SimulatorNew() {
                     )
 
                     if (!productCategory) {
-                      console.warn('Product category not found:', block.metadata.product_category_id)
+                      console.error('❌ Product category not found!', {
+                        looking_for: block.metadata.product_category_id,
+                        available_ids: availableCategories.map(c => c.id),
+                        available_names: availableCategories.map(c => c.name)
+                      })
                       return null
                     }
+
+                    console.log('✅ Found category:', productCategory.display_name)
 
                     return (
                       <div key={block.id}>
