@@ -280,28 +280,6 @@ export default function FormManager({ shopId }: FormManagerProps) {
     setEditingBlockId(block.id)
   }
 
-  // フォームの公開/非公開を切り替え
-  const handleToggleFormPublish = async () => {
-    if (!selectedForm) return
-
-    const newStatus = !selectedForm.is_active
-    const action = newStatus ? '公開' : '非公開'
-
-    if (!confirm(`このフォームを${action}にしますか？`)) return
-
-    try {
-      await updateFormSchema(selectedForm.id, { is_active: newStatus })
-      await loadData()
-      if (selectedFormId) {
-        await loadFormWithBlocks(selectedFormId)
-      }
-      alert(`フォームを${action}にしました`)
-    } catch (err) {
-      console.error(err)
-      alert(`${action}に失敗しました: ` + getErrorMessage(err))
-    }
-  }
-
   // プレビューモーダルを開く
   const handleOpenPreview = () => {
     setPreviewYesNoAnswers(new Map())
@@ -315,6 +293,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
       list: 'リスト', // 非推奨だが、既存データのため残す
       category_reference: 'カテゴリ参照',
       yes_no: 'Yes/No質問',
+      choice: '選択肢質問',
     }
     return labels[type]
   }

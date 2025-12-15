@@ -199,25 +199,9 @@ export default function SimulatorNew() {
             {selectedShootingId && formSchema && formSchema.blocks.length > 0 && (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block, index) => {
-                  // デバッグログ
-                  console.log('Block:', {
-                    id: block.id,
-                    type: block.block_type,
-                    content: block.content?.substring(0, 30),
-                    show_condition: block.show_condition,
-                    yesNoAnswers: Array.from(yesNoAnswers.entries())
-                  })
-
                   // Check show_condition - 条件が設定されている場合
                   if (block.show_condition) {
                     const requiredAnswer = yesNoAnswers.get(block.show_condition.block_id)
-                    console.log('Conditional block check:', {
-                      block_id: block.id,
-                      required_block_id: block.show_condition.block_id,
-                      required_value: block.show_condition.value,
-                      actual_answer: requiredAnswer,
-                      will_show: requiredAnswer === block.show_condition.value
-                    })
                     // 条件が満たされていない場合は非表示
                     if (requiredAnswer !== block.show_condition.value) {
                       return null
@@ -322,15 +306,7 @@ export default function SimulatorNew() {
 
                   // Category reference block
                   if (block.block_type === 'category_reference') {
-                    const availableCategories = allProductCategories.map(pc => ({ id: pc.id, name: pc.display_name }))
-                    console.log('Category reference block:', {
-                      block_id: block.id,
-                      looking_for_id: block.metadata?.product_category_id,
-                      available_categories: availableCategories
-                    })
-
                     if (!block.metadata?.product_category_id) {
-                      console.warn('❌ Block has no product_category_id in metadata:', block.id)
                       return null
                     }
 
@@ -339,15 +315,8 @@ export default function SimulatorNew() {
                     )
 
                     if (!productCategory) {
-                      console.error('❌ Product category not found!', {
-                        looking_for: block.metadata.product_category_id,
-                        available_ids: availableCategories.map(c => c.id),
-                        available_names: availableCategories.map(c => c.name)
-                      })
                       return null
                     }
-
-                    console.log('✅ Found category:', productCategory.display_name)
 
                     return (
                       <div key={block.id}>
