@@ -380,6 +380,7 @@ export default function SimulatorNew() {
                   ))}
                 </div>
               </div>
+              )
             )}
           </div>
         </div>

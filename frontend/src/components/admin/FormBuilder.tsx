@@ -1,26 +1,17 @@
 import { useState, useEffect } from 'react'
 import {
   getFormWithFields,
-  getFormWithBlocks,
   createFormSchema,
   updateFormSchema,
   createFormField,
   updateFormField,
   deleteFormField,
   updateFieldsOrder,
-  createFormBlock,
-  updateFormBlock,
-  deleteFormBlock,
 } from '../../services/formBuilderService'
-import { getShootingCategories } from '../../services/categoryService'
 import type {
   FormWithFields,
   FormFieldWithOptions,
-  FormSchemaWithBlocks,
-  FormBlock,
-  BlockType,
 } from '../../types/formBuilder'
-import type { ShootingCategory } from '../../types/category'
 import FieldEditor from './FieldEditor'
 
 interface FormBuilderProps {
