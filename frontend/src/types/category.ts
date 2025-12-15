@@ -26,13 +26,15 @@ export interface ProductCategory {
   updated_at: string
 }
 
-// 撮影カテゴリと商品カテゴリの関連
+// 撮影カテゴリと商品カテゴリの関連（shooting_product_associations テーブル）
 export interface ShootingProductAssociation {
   id: number
   shooting_category_id: number
   product_category_id: number
   sort_order: number
+  is_required: boolean
   created_at: string
+  updated_at: string
 }
 
 // アイテム（実際の商品）
@@ -86,6 +88,12 @@ export interface CreateShootingProductAssociation {
   shooting_category_id: number
   product_category_id: number
   sort_order?: number
+  is_required?: boolean
+}
+
+export interface UpdateShootingProductAssociation {
+  sort_order?: number
+  is_required?: boolean
 }
 
 // 更新用の型
