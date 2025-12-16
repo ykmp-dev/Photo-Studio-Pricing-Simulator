@@ -1050,6 +1050,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     /* ノードビュー */
                     <FormBuilderCanvas
                       blocks={selectedForm.blocks}
+                      productCategories={productCategories}
                       onBlockUpdate={async (blockId, updates) => {
                         // Null値を除外
                         const cleanUpdates = {
