@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getFormWithBlocks, updateFormBlock, deleteFormBlock, createFormBlock } from '../services/formBlockService'
-import { getProductCategories } from '../services/productService'
-import type { FormWithBlocks, FormBlock, BlockType } from '../types/formBuilder'
+import { getFormWithBlocks, updateFormBlock, deleteFormBlock, createFormBlock } from '../services/formBuilderService'
+import { getProductCategories } from '../services/categoryService'
+import type { FormSchemaWithBlocks, FormBlock, BlockType } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
 
 export default function FormNodeViewPage() {
   const { formId } = useParams<{ formId: string }>()
   const navigate = useNavigate()
-  const [form, setForm] = useState<FormWithBlocks | null>(null)
+  const [form, setForm] = useState<FormSchemaWithBlocks | null>(null)
   const [productCategories, setProductCategories] = useState<Array<{ id: number; display_name: string; items?: any[] }>>([])
   const [loading, setLoading] = useState(false)
 
