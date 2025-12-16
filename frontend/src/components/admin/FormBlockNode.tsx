@@ -6,6 +6,7 @@ interface FormBlockNodeData {
   block: FormBlock
   onUpdate: (updates: Partial<FormBlock>) => void
   onDelete: () => void
+  onCopy?: (block: FormBlock) => void
 }
 
 // ブロックタイプごとのアイコンと色
@@ -35,6 +36,13 @@ function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
   return (
     <div
       className={`px-3 py-2 shadow-md rounded-lg border-2 ${style.color} ${style.border} min-w-[160px] max-w-[220px]`}
+      onContextMenu={(e) => {
+        if (data.onCopy) {
+          e.preventDefault()
+          data.onCopy(block)
+        }
+      }}
+      title="右クリックでコピー"
     >
       {/* 入力ハンドル（左側） - すべてのブロックに追加 */}
       <Handle

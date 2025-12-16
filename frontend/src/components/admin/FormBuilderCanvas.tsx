@@ -83,9 +83,10 @@ function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: numb
 
 // バリデーション：到達不可能ノードと循環参照を検出
 interface ValidationIssue {
-  type: 'unreachable' | 'circular'
+  type: 'unreachable' | 'circular' | 'suggestion'
   blockIds: number[]
   message: string
+  suggestion?: string  // 推奨アクション
 }
 
 function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
@@ -144,12 +145,30 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
   // 到達不可能なノードを検出
   const unreachableBlocks = blocks.filter((b) => !reachable.has(b.id))
   if (unreachableBlocks.length > 0) {
+    const blockNames = unreachableBlocks.map((b) => `「${b.content || b.block_type}」`).join(', ')
     issues.push({
       type: 'unreachable',
       blockIds: unreachableBlocks.map((b) => b.id),
-      message: `到達不可能なノードが${unreachableBlocks.length}個あります`,
+      message: `到達不可能なノード: ${blockNames}`,
+      suggestion: '親ブロックから接続してください',
     })
   }
+
+  // Yes/Noブロックの後に推奨アクション
+  const yesNoBlocks = blocks.filter((b) => b.block_type === 'yes_no')
+  yesNoBlocks.forEach((yesNoBlock) => {
+    const yesChildren = blocks.filter((b) => b.show_condition?.block_id === yesNoBlock.id && b.show_condition.value === 'yes')
+    const noChildren = blocks.filter((b) => b.show_condition?.block_id === yesNoBlock.id && b.show_condition.value === 'no')
+
+    if (yesChildren.length === 0 || noChildren.length === 0) {
+      issues.push({
+        type: 'suggestion',
+        blockIds: [yesNoBlock.id],
+        message: `「${yesNoBlock.content || 'Yes/No'}」ブロックには、Yesの場合とNoの場合の両方のブロックを追加することをお勧めします`,
+        suggestion: '右側のハンドルから次のブロックに接続してください',
+      })
+    }
+  })
 
   return issues
 }
@@ -158,7 +177,8 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
 function blocksToNodes(
   blocks: FormBlock[],
   positions?: Map<number, { x: number; y: number }>,
-  validationIssues?: ValidationIssue[]
+  validationIssues?: ValidationIssue[],
+  onCopy?: (block: FormBlock) => void
 ): Node[] {
   const layout = positions || calculateHierarchicalLayout(blocks)
   const unreachableIds = new Set(
@@ -179,6 +199,7 @@ function blocksToNodes(
         block,
         onUpdate: (_updates: Partial<FormBlock>) => {},
         onDelete: () => {},
+        onCopy,
       },
       // バリデーションエラーのあるノードを視覚的に区別
       style: unreachableIds.has(block.id)
@@ -224,15 +245,51 @@ export default function FormBuilderCanvas({
   fullScreen = false,
 }: FormBuilderCanvasProps) {
   const [editingBlock, setEditingBlock] = useState<FormBlock | null>(null)
+  const [copiedBlock, setCopiedBlock] = useState<FormBlock | null>(null)  // コピーしたブロック
+
+  // ブロックをコピー
+  const handleCopyBlock = useCallback((block: FormBlock) => {
+    setCopiedBlock(block)
+    alert(`「${block.content || 'ブロック'}」をコピーしました`)
+  }, [])
 
   // バリデーション実行
   const validationIssues = useMemo(() => validateBlocks(blocks), [blocks])
 
-  const initialNodes = useMemo(() => blocksToNodes(blocks, undefined, validationIssues), [blocks, validationIssues])
+  const initialNodes = useMemo(() => blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock), [blocks, validationIssues, handleCopyBlock])
   const initialEdges = useMemo(() => blocksToEdges(blocks), [blocks])
 
-  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
+  // 自動レイアウト整理
+  const handleAutoLayout = useCallback(() => {
+    const newLayout = calculateHierarchicalLayout(blocks)
+    const updatedNodes = nodes.map((node) => {
+      const blockId = parseInt(node.id)
+      const newPos = newLayout.get(blockId)
+      if (newPos) {
+        return { ...node, position: newPos }
+      }
+      return node
+    })
+    setNodes(updatedNodes)
+  }, [blocks, nodes, setNodes])
+
+  // ブロックを貼り付け
+  const handlePasteBlock = useCallback(async () => {
+    if (!copiedBlock) {
+      alert('コピーされたブロックがありません')
+      return
+    }
+
+    // 新しいブロックを作成（show_conditionは除外）
+    await onBlockAdd(copiedBlock.block_type)
+
+    // TODO: コピーしたブロックのcontentやmetadataも反映させる
+    // 現在の実装では、ブロックタイプのみコピーされます
+    alert('ブロックを貼り付けました（内容は後で編集してください）')
+  }, [copiedBlock, onBlockAdd])
 
   // ノードダブルクリックで編集モーダル
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
@@ -297,21 +354,33 @@ export default function FormBuilderCanvas({
     >
       {/* バリデーション警告 */}
       {validationIssues.length > 0 && (
-        <div className="absolute top-4 right-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-lg p-3 max-w-md z-10">
-          <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-            ⚠️ バリデーション警告
+        <div className="absolute top-4 right-4 bg-white border-2 border-yellow-400 rounded-lg shadow-xl p-4 max-w-md z-10">
+          <h4 className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
+            ⚠️ アドバイス ({validationIssues.length})
           </h4>
-          <div className="space-y-1">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {validationIssues.map((issue, idx) => (
-              <div key={idx} className="text-sm text-yellow-700">
-                {issue.type === 'unreachable' && '🔴 '}
-                {issue.type === 'circular' && '🟠 '}
-                {issue.message}
+              <div key={idx} className={`text-sm p-2 rounded ${
+                issue.type === 'unreachable' ? 'bg-red-50 border border-red-200' :
+                issue.type === 'circular' ? 'bg-orange-50 border border-orange-200' :
+                'bg-blue-50 border border-blue-200'
+              }`}>
+                <div className="font-medium mb-1">
+                  {issue.type === 'unreachable' && '🔴 '}
+                  {issue.type === 'circular' && '🟠 '}
+                  {issue.type === 'suggestion' && '💡 '}
+                  {issue.message}
+                </div>
+                {issue.suggestion && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    👉 {issue.suggestion}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-          <div className="text-xs text-yellow-600 mt-2">
-            🔴 到達不可能 / 🟠 循環参照
+          <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
+            🔴 エラー / 🟠 警告 / 💡 推奨アクション
           </div>
         </div>
       )}
@@ -371,6 +440,29 @@ export default function FormBuilderCanvas({
           className="w-full px-3 py-2 text-sm bg-green-100 hover:bg-green-200 rounded"
         >
           + カテゴリ
+        </button>
+      </div>
+
+      {/* 操作ツールバー */}
+      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 space-y-2">
+        <button
+          onClick={handleAutoLayout}
+          className="w-full px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+          title="ノードを自動的にきれいに整列します"
+        >
+          ✨ きれいに整理
+        </button>
+        <button
+          onClick={handlePasteBlock}
+          disabled={!copiedBlock}
+          className={`w-full px-3 py-2 text-sm rounded font-medium ${
+            copiedBlock
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+          title={copiedBlock ? `「${copiedBlock.content || copiedBlock.block_type}」を貼り付け` : 'ブロックをコピーしてください'}
+        >
+          📋 貼り付け
         </button>
       </div>
 
