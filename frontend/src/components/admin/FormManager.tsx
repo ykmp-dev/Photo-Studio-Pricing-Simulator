@@ -1022,6 +1022,13 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     {/* ビュー切り替えボタン */}
                     <div className="flex gap-2">
                       <button
+                        onClick={() => window.open(`/admin/forms/${selectedFormId}/node-view`, '_blank')}
+                        className="px-3 py-1 text-sm rounded bg-purple-600 text-white hover:bg-purple-700"
+                        title="ノードビューを専用ページで開く"
+                      >
+                        🚀 専用ページで開く
+                      </button>
+                      <button
                         onClick={() => setViewMode('canvas')}
                         className={`px-3 py-1 text-sm rounded ${
                           viewMode === 'canvas'
