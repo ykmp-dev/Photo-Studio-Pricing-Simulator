@@ -14,7 +14,6 @@ import { getShootingCategories, getProductCategories, getItems } from '../../ser
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
 import type { ShootingCategory, Item } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
-import FormBuilderCanvas from './FormBuilderCanvas'
 
 interface FormManagerProps {
   shopId: number
@@ -48,9 +47,6 @@ export default function FormManager({ shopId }: FormManagerProps) {
   const [blockChoiceDisplay, setBlockChoiceDisplay] = useState<'radio' | 'select' | 'auto'>('auto')
   const [blockChoiceInputMode, setBlockChoiceInputMode] = useState<'manual' | 'category'>('manual')
   const [blockChoiceCategoryId, setBlockChoiceCategoryId] = useState<number | null>(null)
-
-  // ビュー切り替え（リスト or ノード）
-  const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas')
 
   // プレビューモーダル
   const [showPreview, setShowPreview] = useState(false)
@@ -1019,71 +1015,17 @@ export default function FormManager({ shopId }: FormManagerProps) {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-gray-700">ブロック一覧</h4>
-                    {/* ビュー切り替えボタン */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => window.open(`/admin/forms/${selectedFormId}/node-view`, '_blank')}
-                        className="px-3 py-1 text-sm rounded bg-purple-600 text-white hover:bg-purple-700"
-                        title="ノードビューを専用ページで開く"
-                      >
-                        🚀 専用ページで開く
-                      </button>
-                      <button
-                        onClick={() => setViewMode('canvas')}
-                        className={`px-3 py-1 text-sm rounded ${
-                          viewMode === 'canvas'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        🎨 ノードビュー
-                      </button>
-                      <button
-                        onClick={() => setViewMode('list')}
-                        className={`px-3 py-1 text-sm rounded ${
-                          viewMode === 'list'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        📋 リストビュー
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => window.open(`/admin/forms/${selectedFormId}/node-view`, '_blank')}
+                      className="px-4 py-2 text-sm rounded bg-purple-600 text-white hover:bg-purple-700 font-medium"
+                      title="ノードビューを専用ページで開く"
+                    >
+                      ノードで作成する
+                    </button>
                   </div>
 
                   {selectedForm.blocks.length === 0 ? (
                     <p className="text-sm text-gray-500">ブロックがまだありません</p>
-                  ) : viewMode === 'canvas' ? (
-                    /* ノードビュー */
-                    <FormBuilderCanvas
-                      blocks={selectedForm.blocks}
-                      productCategories={productCategories}
-                      onBlockUpdate={async (blockId, updates) => {
-                        // Null値を除外
-                        const cleanUpdates = {
-                          ...updates,
-                          content: updates.content === null ? undefined : updates.content,
-                        }
-                        await updateFormBlock(blockId, cleanUpdates)
-                        await loadFormWithBlocks(selectedFormId!)
-                      }}
-                      onBlockDelete={async (blockId) => {
-                        if (confirm('このブロックを削除しますか？')) {
-                          await deleteFormBlock(blockId)
-                          await loadFormWithBlocks(selectedFormId!)
-                        }
-                      }}
-                      onBlockAdd={async (blockType) => {
-                        setBlockType(blockType)
-                        // TODO: モーダルで詳細設定
-                        await handleCreateBlock({ preventDefault: () => {} } as React.FormEvent)
-                      }}
-                      onBlocksReorder={async (blocks) => {
-                        const ids = blocks.map(b => b.id)
-                        await updateBlocksOrder(ids)
-                        await loadFormWithBlocks(selectedFormId!)
-                      }}
-                    />
                   ) : (
                     /* リストビュー */
                     <div className="space-y-2">
