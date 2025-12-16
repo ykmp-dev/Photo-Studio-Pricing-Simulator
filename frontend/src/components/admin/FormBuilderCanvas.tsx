@@ -27,7 +27,7 @@ interface FormBuilderCanvasProps {
   fullScreen?: boolean
 }
 
-// 階層的自動レイアウト: 条件分岐で横に広がる
+// 階層的自動レイアウト: 左から右へのフロー
 function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: number; y: number }> {
   const positions = new Map<number, { x: number; y: number }>()
 
@@ -46,33 +46,36 @@ function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: numb
     }
   })
 
-  const VERTICAL_SPACING = 150
-  const HORIZONTAL_SPACING = 300
-  let currentY = 100
+  // ノード間隔を狭くする
+  const HORIZONTAL_SPACING = 250  // 左から右への間隔
+  const VERTICAL_SPACING = 100     // 上下の間隔
 
-  // 再帰的にレイアウト
-  const layoutNode = (block: FormBlock, x: number, depth: number): number => {
+  // 深さごとに使用したY座標を追跡
+  const depthYPosition = new Map<number, number>()
+
+  // 再帰的にレイアウト（左から右へ）
+  const layoutNode = (block: FormBlock, depth: number): void => {
+    const x = 100 + depth * HORIZONTAL_SPACING
+
+    // この深さで次に使用するY座標を取得
+    const currentY = depthYPosition.get(depth) || 100
     const y = currentY
-    currentY += VERTICAL_SPACING
+
+    // 次のノードのために、Y座標を更新
+    depthYPosition.set(depth, currentY + VERTICAL_SPACING)
 
     positions.set(block.id, { x, y })
 
+    // 子ノードを配置
     const children = childrenMap.get(block.id) || []
-    if (children.length > 0) {
-      // 子ノードを横に配置
-      children.forEach((child, index) => {
-        const childX = x + (index - (children.length - 1) / 2) * HORIZONTAL_SPACING
-        layoutNode(child, childX, depth + 1)
-      })
-    }
-
-    return y
+    children.forEach((child) => {
+      layoutNode(child, depth + 1)
+    })
   }
 
-  // ルートノードからレイアウト開始
-  rootBlocks.forEach((root, index) => {
-    const startX = 250 + index * HORIZONTAL_SPACING * 2
-    layoutNode(root, startX, 0)
+  // ルートノードからレイアウト開始（左側から）
+  rootBlocks.forEach((root) => {
+    layoutNode(root, 0)
   })
 
   return positions
@@ -251,20 +254,25 @@ export default function FormBuilderCanvas({
         const sourceBlockId = parseInt(connection.source)
         const targetBlockId = parseInt(connection.target)
 
-        // TODO: モーダルで条件値を入力させる
-        // 今は仮でデフォルト値を設定
         const sourceBlock = blocks.find((b) => b.id === sourceBlockId)
-        let conditionValue = 'yes'
+        let conditionValue = 'next'  // デフォルト値
+        let conditionType: 'yes_no' | 'choice' = 'choice'
 
-        if (sourceBlock?.block_type === 'choice') {
+        // ブロックタイプに応じて条件値を設定
+        if (sourceBlock?.block_type === 'yes_no') {
+          conditionType = 'yes_no'
+          conditionValue = 'yes'  // デフォルトで「はい」の場合に表示
+        } else if (sourceBlock?.block_type === 'choice') {
+          conditionType = 'choice'
           // Choice blockの場合、最初の選択肢をデフォルトにする
           const options = sourceBlock.metadata?.choice_options || []
-          conditionValue = options[0]?.value || ''
+          conditionValue = options[0]?.value || 'next'
         }
+        // text/heading/category_referenceの場合は'next'を使用
 
         onBlockUpdate(targetBlockId, {
           show_condition: {
-            type: sourceBlock?.block_type === 'yes_no' ? 'yes_no' : 'choice',
+            type: conditionType,
             block_id: sourceBlockId,
             value: conditionValue,
           },
