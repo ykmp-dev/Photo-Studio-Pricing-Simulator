@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getFormWithBlocks, updateFormBlock, deleteFormBlock, createFormBlock } from '../services/formBuilderService'
 import { getProductCategories } from '../services/categoryService'
-import type { FormSchemaWithBlocks, FormBlock, BlockType } from '../types/formBuilder'
+import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
 
 export default function FormNodeViewPage() {
@@ -40,7 +40,21 @@ export default function FormNodeViewPage() {
 
   const handleBlockUpdate = async (blockId: number, updates: Partial<FormBlock>) => {
     try {
-      await updateFormBlock(blockId, updates)
+      // nullをundefinedに変換（updateFormBlock関数の型に合わせる）
+      const cleanedUpdates: {
+        block_type?: BlockType
+        content?: string
+        sort_order?: number
+        metadata?: any
+        show_condition?: ShowCondition | null
+      } = {
+        block_type: updates.block_type,
+        content: updates.content === null ? undefined : updates.content,
+        sort_order: updates.sort_order,
+        metadata: updates.metadata,
+        show_condition: updates.show_condition,
+      }
+      await updateFormBlock(blockId, cleanedUpdates)
       await loadFormAndCategories()
     } catch (err) {
       console.error('Failed to update block:', err)
