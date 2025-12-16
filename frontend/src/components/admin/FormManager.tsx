@@ -1016,7 +1016,12 @@ export default function FormManager({ shopId }: FormManagerProps) {
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-gray-700">ブロック一覧</h4>
                     <button
-                      onClick={() => window.open(`/admin/forms/${selectedFormId}/node-view`, '_blank')}
+                      onClick={() => {
+                        const baseUrl = import.meta.env.PROD
+                          ? `${window.location.origin}/Photo-Studio-Pricing-Simulator`
+                          : window.location.origin
+                        window.open(`${baseUrl}/admin/forms/${selectedFormId}/node-view`, '_blank')
+                      }}
                       className="px-4 py-2 text-sm rounded bg-purple-600 text-white hover:bg-purple-700 font-medium"
                       title="ノードビューを専用ページで開く"
                     >
