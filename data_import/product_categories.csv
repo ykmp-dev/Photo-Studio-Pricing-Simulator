@@ -1,0 +1,11 @@
+id,shop_id,name,display_name,description,sort_order,is_active
+1,1,hair,ヘアセット,プロスタイリストによるヘアセット,1,true
+2,1,makeup,メイク,プロによるメイクアップ,2,true
+3,1,dressing,着付け,着物・振袖の着付けサービス,3,true
+4,1,album,アルバム,写真アルバム・フォトブック,4,true
+5,1,print_frame,プリント・台紙,写真プリント・台紙・額縁,5,true
+6,1,data,データ,撮影データ・デジタルデータ,6,true
+7,1,additional_shooting,追加撮影,追加ポーズ・衣装替え,7,true
+8,1,retouching,レタッチ,写真修正・加工サービス,8,true
+9,1,costume_rental,衣装レンタル,撮影用衣装のレンタル,9,true
+10,1,accessory,小物・アクセサリー,撮影小物・髪飾り等,10,true

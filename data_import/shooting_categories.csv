@@ -1,0 +1,9 @@
+id,shop_id,name,display_name,description,sort_order,is_active
+1,1,shichigosan,七五三,三歳・五歳・七歳の記念撮影,1,true
+2,1,seijinshiki,成人式,振袖での成人式記念撮影,2,true
+3,1,omiyamairi,お宮参り,赤ちゃんの初宮参り記念撮影,3,true
+4,1,sotsugyou,卒業・入学,卒業式・入学式の記念撮影,4,true
+5,1,family,家族写真,ご家族での記念撮影,5,true
+6,1,omiai,お見合い写真,お見合い用プロフィール写真,6,true
+7,1,id_photo,証明写真,就活・受験・パスポート等の証明写真,7,true
+8,1,audition,オーディション写真,タレント・モデル・CA等のオーディション用写真,8,true
