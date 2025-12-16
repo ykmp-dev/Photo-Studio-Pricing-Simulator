@@ -24,6 +24,7 @@ interface FormBuilderCanvasProps {
   onBlockDelete: (blockId: number) => void
   onBlockAdd: (blockType: BlockType) => void
   onBlocksReorder: (blocks: FormBlock[]) => void
+  fullScreen?: boolean
 }
 
 // 階層的自動レイアウト: 条件分岐で横に広がる
@@ -217,6 +218,7 @@ export default function FormBuilderCanvas({
   onBlockDelete,
   onBlockAdd,
   onBlocksReorder: _onBlocksReorder,
+  fullScreen = false,
 }: FormBuilderCanvasProps) {
   const [editingBlock, setEditingBlock] = useState<FormBlock | null>(null)
 
@@ -281,7 +283,10 @@ export default function FormBuilderCanvas({
   )
 
   return (
-    <div style={{ width: '100%', height: '600px' }} className="border border-gray-300 rounded-lg relative">
+    <div
+      style={{ width: '100%', height: fullScreen ? '100%' : '600px' }}
+      className={fullScreen ? 'relative' : 'border border-gray-300 rounded-lg relative'}
+    >
       {/* バリデーション警告 */}
       {validationIssues.length > 0 && (
         <div className="absolute top-4 right-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-lg p-3 max-w-md z-10">
@@ -312,6 +317,15 @@ export default function FormBuilderCanvas({
         onNodeDoubleClick={onNodeDoubleClick}
         nodeTypes={nodeTypes}
         fitView
+        defaultEdgeOptions={{
+          animated: true,
+          style: { strokeWidth: 2 },
+        }}
+        proOptions={{ hideAttribution: true }}
+        minZoom={0.2}
+        maxZoom={2}
+        snapToGrid={true}
+        snapGrid={[15, 15]}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         <Controls />

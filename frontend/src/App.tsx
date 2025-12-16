@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import SimulatorPage from './pages/SimulatorPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
+import FormNodeViewPage from './pages/FormNodeViewPage'
 import { AuthProvider } from './contexts/AuthContext'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Route path="/" element={<SimulatorPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/forms/:formId/node-view" element={<FormNodeViewPage />} />
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Router>
