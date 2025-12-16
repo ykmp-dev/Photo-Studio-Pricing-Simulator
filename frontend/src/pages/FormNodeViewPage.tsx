@@ -67,7 +67,7 @@ export default function FormNodeViewPage() {
       await createFormBlock({
         form_schema_id: form.id,
         block_type: blockType,
-        content: '',
+        content: undefined,
         sort_order: form.blocks.length,
         metadata: {},
       })
