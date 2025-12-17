@@ -1,5 +1,7 @@
 // フォームビルダー関連の型定義
 
+export type FormStatus = 'draft' | 'published'
+
 export interface FormSchema {
   id: number
   shop_id: number
@@ -8,9 +10,11 @@ export interface FormSchema {
   category: string | null
   description: string | null
   is_active: boolean
+  status: FormStatus
   sort_order: number
   created_at: string
   updated_at: string
+  published_at: string | null
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
@@ -103,6 +107,7 @@ export interface CreateFormSchema {
   category?: string
   description?: string
   is_active?: boolean
+  status?: FormStatus
   sort_order?: number
 }
 
@@ -112,6 +117,7 @@ export interface UpdateFormSchema {
   category?: string
   description?: string
   is_active?: boolean
+  status?: FormStatus
   sort_order?: number
 }
 

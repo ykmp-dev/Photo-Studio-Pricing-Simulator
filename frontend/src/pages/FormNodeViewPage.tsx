@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getFormWithBlocks, updateFormBlock, deleteFormBlock, createFormBlock } from '../services/formBuilderService'
+import {
+  getFormWithBlocks,
+  deleteFormBlock,
+  createFormBlock,
+  updateFormSchema,
+  publishFormSchema
+} from '../services/formBuilderService'
 import { getProductCategories } from '../services/categoryService'
 import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
@@ -9,8 +15,11 @@ export default function FormNodeViewPage() {
   const { formId } = useParams<{ formId: string }>()
   const navigate = useNavigate()
   const [form, setForm] = useState<FormSchemaWithBlocks | null>(null)
+  const [localBlocks, setLocalBlocks] = useState<FormBlock[]>([])
+  const [hasChanges, setHasChanges] = useState(false)
   const [productCategories, setProductCategories] = useState<Array<{ id: number; display_name: string; items?: any[] }>>([])
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadFormAndCategories()
@@ -28,6 +37,8 @@ export default function FormNodeViewPage() {
 
       if (formData) {
         setForm(formData)
+        setLocalBlocks(formData.blocks)
+        setHasChanges(false)
       }
       setProductCategories(categoriesData)
     } catch (err) {
@@ -38,63 +49,132 @@ export default function FormNodeViewPage() {
     }
   }
 
-  const handleBlockUpdate = async (blockId: number, updates: Partial<FormBlock>) => {
-    try {
-      // nullをundefinedに変換（updateFormBlock関数の型に合わせる）
-      const cleanedUpdates: {
-        block_type?: BlockType
-        content?: string
-        sort_order?: number
-        metadata?: any
-        show_condition?: ShowCondition | null
-      } = {
-        block_type: updates.block_type,
-        content: updates.content === null ? undefined : updates.content,
-        sort_order: updates.sort_order,
-        metadata: updates.metadata,
-        show_condition: updates.show_condition,
-      }
-      await updateFormBlock(blockId, cleanedUpdates)
-      await loadFormAndCategories()
-    } catch (err) {
-      console.error('Failed to update block:', err)
-      alert('ブロックの更新に失敗しました')
-    }
+  // ローカルステートのみ更新（DBには保存しない）
+  const handleBlockUpdate = (blockId: number, updates: Partial<FormBlock>) => {
+    setLocalBlocks(prevBlocks =>
+      prevBlocks.map(block =>
+        block.id === blockId ? { ...block, ...updates } : block
+      )
+    )
+    setHasChanges(true)
   }
 
-  const handleBlockDelete = async (blockId: number) => {
+  // ローカルステートから削除（DBには保存しない）
+  const handleBlockDelete = (blockId: number) => {
     if (!confirm('このブロックを削除しますか？')) return
-
-    try {
-      await deleteFormBlock(blockId)
-      await loadFormAndCategories()
-    } catch (err) {
-      console.error('Failed to delete block:', err)
-      alert('ブロックの削除に失敗しました')
-    }
+    setLocalBlocks(prevBlocks => prevBlocks.filter(block => block.id !== blockId))
+    setHasChanges(true)
   }
 
-  const handleBlockAdd = async (blockType: BlockType) => {
+  // ローカルステートに追加（DBには保存しない）
+  const handleBlockAdd = (blockType: BlockType) => {
+    if (!form) return
+
+    const newBlock: FormBlock = {
+      id: Date.now(), // 一時ID（保存時にサーバーが割り当て）
+      form_schema_id: form.id,
+      block_type: blockType,
+      content: null,
+      sort_order: localBlocks.length,
+      metadata: {},
+      show_condition: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    setLocalBlocks(prev => [...prev, newBlock])
+    setHasChanges(true)
+  }
+
+  const handleBlocksReorder = (blocks: FormBlock[]) => {
+    setLocalBlocks(blocks)
+    setHasChanges(true)
+  }
+
+  // 下書き保存（DBに保存、statusはdraftのまま）
+  const handleSaveDraft = async () => {
     if (!form) return
 
     try {
-      await createFormBlock({
-        form_schema_id: form.id,
-        block_type: blockType,
-        content: undefined,
-        sort_order: form.blocks.length,
-        metadata: {},
-      })
+      setSaving(true)
+
+      // すべてのブロックをDBに保存
+      // 既存のブロックを全削除して再作成（簡略化）
+      await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
+
+      for (const block of localBlocks) {
+        const cleanedUpdates: {
+          form_schema_id: number
+          block_type: BlockType
+          content?: string
+          sort_order: number
+          metadata?: any
+          show_condition?: ShowCondition | null
+        } = {
+          form_schema_id: form.id,
+          block_type: block.block_type,
+          content: block.content === null ? undefined : block.content,
+          sort_order: block.sort_order,
+          metadata: block.metadata,
+          show_condition: block.show_condition,
+        }
+        await createFormBlock(cleanedUpdates)
+      }
+
+      // ステータスはdraftのまま
+      await updateFormSchema(form.id, { status: 'draft' })
+
+      alert('下書きを保存しました')
       await loadFormAndCategories()
     } catch (err) {
-      console.error('Failed to create block:', err)
-      alert('ブロックの追加に失敗しました')
+      console.error('Failed to save draft:', err)
+      alert('下書き保存に失敗しました')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const handleBlocksReorder = async (blocks: FormBlock[]) => {
-    // TODO: Implement reordering API
-    console.log('Reordering blocks:', blocks)
+  // 公開（DBに保存 + statusをpublishedに変更）
+  const handlePublish = async () => {
+    if (!form) return
+    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) return
+
+    try {
+      setSaving(true)
+
+      // すべてのブロックをDBに保存
+      await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
+
+      for (const block of localBlocks) {
+        const cleanedUpdates: {
+          form_schema_id: number
+          block_type: BlockType
+          content?: string
+          sort_order: number
+          metadata?: any
+          show_condition?: ShowCondition | null
+        } = {
+          form_schema_id: form.id,
+          block_type: block.block_type,
+          content: block.content === null ? undefined : block.content,
+          sort_order: block.sort_order,
+          metadata: block.metadata,
+          show_condition: block.show_condition,
+        }
+        await createFormBlock(cleanedUpdates)
+      }
+
+      // 公開
+      await publishFormSchema(form.id)
+
+      alert('フォームを公開しました')
+      await loadFormAndCategories()
+    } catch (err) {
+      console.error('Failed to publish:', err)
+      alert('公開に失敗しました')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {
@@ -128,13 +208,32 @@ export default function FormNodeViewPage() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">{form.name}</h1>
-                <p className="text-sm text-gray-500 mt-1">ノードビュー</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  ノードビュー
+                  {form.status === 'published' && <span className="ml-2 text-green-600 font-semibold">● 公開中</span>}
+                  {form.status === 'draft' && <span className="ml-2 text-yellow-600 font-semibold">● 下書き</span>}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-sm text-gray-600">
-                ブロック数: <span className="font-semibold">{form.blocks.length}</span>
+                ブロック数: <span className="font-semibold">{localBlocks.length}</span>
+                {hasChanges && <span className="ml-2 text-orange-600 font-semibold">● 未保存の変更</span>}
               </div>
+              <button
+                onClick={handleSaveDraft}
+                disabled={!hasChanges || saving}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {saving ? '保存中...' : '下書き保存'}
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {saving ? '公開中...' : '公開'}
+              </button>
             </div>
           </div>
         </div>
@@ -143,7 +242,7 @@ export default function FormNodeViewPage() {
       {/* メインコンテンツ */}
       <main className="w-full h-[calc(100vh-88px)]">
         <FormBuilderCanvas
-          blocks={form.blocks}
+          blocks={localBlocks}
           productCategories={productCategories}
           onBlockUpdate={handleBlockUpdate}
           onBlockDelete={handleBlockDelete}
