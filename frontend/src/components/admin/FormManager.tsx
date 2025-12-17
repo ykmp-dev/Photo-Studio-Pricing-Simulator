@@ -9,6 +9,8 @@ import {
   updateFormBlock,
   deleteFormBlock,
   updateBlocksOrder,
+  publishFormSchema,
+  unpublishFormSchema,
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories, getItems } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
@@ -102,6 +104,40 @@ export default function FormManager({ shopId }: FormManagerProps) {
     }
   }
 
+  const handlePublishForm = async () => {
+    if (!selectedForm) return
+    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) return
+
+    try {
+      await publishFormSchema(selectedForm.id)
+      alert('フォームを公開しました')
+      await loadData()
+      if (selectedFormId) {
+        await loadFormWithBlocks(selectedFormId)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('公開に失敗しました: ' + getErrorMessage(err))
+    }
+  }
+
+  const handleUnpublishForm = async () => {
+    if (!selectedForm) return
+    if (!confirm('このフォームを下書きに戻しますか？エンドユーザーには表示されなくなります。')) return
+
+    try {
+      await unpublishFormSchema(selectedForm.id)
+      alert('フォームを下書きに戻しました')
+      await loadData()
+      if (selectedFormId) {
+        await loadFormWithBlocks(selectedFormId)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('下書きに戻すのに失敗しました: ' + getErrorMessage(err))
+    }
+  }
+
   const handleCreateForm = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -111,6 +147,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
         description: formDescription || undefined,
         shooting_category_id: formShootingCategoryId || undefined,
         is_active: formIsActive,
+        status: 'draft', // 新規作成時は下書き
       })
       resetFormForm()
       await loadData()
@@ -556,9 +593,19 @@ export default function FormManager({ shopId }: FormManagerProps) {
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {selectedForm.name} のブロック管理
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {selectedForm.name} のブロック管理
+                  </h3>
+                  <p className="text-sm mt-1">
+                    {selectedForm.status === 'published' && (
+                      <span className="text-green-600 font-semibold">● 公開中</span>
+                    )}
+                    {selectedForm.status === 'draft' && (
+                      <span className="text-yellow-600 font-semibold">● 下書き</span>
+                    )}
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleOpenPreview}
@@ -566,6 +613,21 @@ export default function FormManager({ shopId }: FormManagerProps) {
                   >
                     👁️ プレビュー
                   </button>
+                  {selectedForm.status === 'draft' ? (
+                    <button
+                      onClick={handlePublishForm}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+                    >
+                      ✓ 公開
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleUnpublishForm}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm font-medium"
+                    >
+                      ← 下書きに戻す
+                    </button>
+                  )}
                   <button
                     onClick={async () => {
                       if (!confirm('フォームの設定を更新しますか？')) return

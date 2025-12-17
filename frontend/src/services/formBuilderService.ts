@@ -76,6 +76,43 @@ export async function deleteFormSchema(id: number): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * フォームを公開する（statusをpublishedに変更）
+ */
+export async function publishFormSchema(id: number): Promise<FormSchema> {
+  const { data, error } = await supabase
+    .from('form_schemas')
+    .update({
+      status: 'published',
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームを下書きに戻す（statusをdraftに変更）
+ */
+export async function unpublishFormSchema(id: number): Promise<FormSchema> {
+  const { data, error } = await supabase
+    .from('form_schemas')
+    .update({
+      status: 'draft',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 // ==================== FormField CRUD ====================
 
 export async function getFormFields(formSchemaId: number): Promise<FormField[]> {
@@ -335,13 +372,14 @@ export async function getFormByShootingCategory(
   shopId: number,
   shootingCategoryId: number
 ): Promise<FormSchemaWithBlocks | null> {
-  // form_schemasテーブルからshooting_category_idで検索
+  // form_schemasテーブルからshooting_category_idで検索（公開済みのみ）
   const { data: formData, error: formError } = await supabase
     .from('form_schemas')
     .select('*')
     .eq('shop_id', shopId)
     .eq('shooting_category_id', shootingCategoryId)
     .eq('is_active', true)
+    .eq('status', 'published')
     .single()
 
   if (formError) {
