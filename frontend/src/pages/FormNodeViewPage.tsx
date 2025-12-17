@@ -61,7 +61,6 @@ export default function FormNodeViewPage() {
 
   // ローカルステートから削除（DBには保存しない）
   const handleBlockDelete = (blockId: number) => {
-    if (!confirm('このブロックを削除しますか？')) return
     setLocalBlocks(prevBlocks => prevBlocks.filter(block => block.id !== blockId))
     setHasChanges(true)
   }
@@ -201,7 +200,7 @@ export default function FormNodeViewPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/admin')}
                 className="text-gray-600 hover:text-gray-800 font-medium transition-colors"
               >
                 ← 戻る
