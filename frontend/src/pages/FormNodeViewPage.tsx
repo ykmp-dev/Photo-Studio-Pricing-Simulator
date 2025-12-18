@@ -10,6 +10,7 @@ import {
 import { getProductCategories } from '../services/categoryService'
 import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
+import { getErrorMessage } from '../utils/errorMessages'
 
 export default function FormNodeViewPage() {
   const { formId } = useParams<{ formId: string }>()
@@ -39,11 +40,17 @@ export default function FormNodeViewPage() {
         setForm(formData)
         setLocalBlocks(formData.blocks)
         setHasChanges(false)
+      } else {
+        console.warn(`Form with ID ${formId} not found`)
+        alert(`フォーム（ID: ${formId}）が見つかりませんでした。削除された可能性があります。`)
+        navigate('/admin')
+        return
       }
       setProductCategories(categoriesData)
     } catch (err) {
       console.error('Failed to load form or categories:', err)
-      alert('データの読み込みに失敗しました')
+      const errorMsg = getErrorMessage(err)
+      alert(`データの読み込みに失敗しました: ${errorMsg}`)
     } finally {
       setLoading(false)
     }
@@ -92,15 +99,25 @@ export default function FormNodeViewPage() {
 
   // 下書き保存（DBに保存、statusはdraftのまま）
   const handleSaveDraft = async () => {
-    if (!form) return
+    if (!form) {
+      console.error('Form is null, cannot save draft')
+      return
+    }
+
+    if (localBlocks.length === 0) {
+      alert('保存するブロックがありません。少なくとも1つのブロックを追加してください。')
+      return
+    }
 
     try {
       setSaving(true)
 
       // すべてのブロックをDBに保存
       // 既存のブロックを全削除して再作成（簡略化）
+      console.log(`Deleting ${form.blocks.length} existing blocks...`)
       await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
 
+      console.log(`Creating ${localBlocks.length} new blocks...`)
       for (const block of localBlocks) {
         const cleanedUpdates: {
           form_schema_id: number
@@ -121,13 +138,15 @@ export default function FormNodeViewPage() {
       }
 
       // ステータスはdraftのまま
+      console.log('Updating form status to draft...')
       await updateFormSchema(form.id, { status: 'draft' })
 
       alert('下書きを保存しました')
       await loadFormAndCategories()
     } catch (err) {
       console.error('Failed to save draft:', err)
-      alert('下書き保存に失敗しました')
+      const errorMsg = getErrorMessage(err)
+      alert(`下書き保存に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
     } finally {
       setSaving(false)
     }
@@ -135,15 +154,26 @@ export default function FormNodeViewPage() {
 
   // 公開（DBに保存 + statusをpublishedに変更）
   const handlePublish = async () => {
-    if (!form) return
+    if (!form) {
+      console.error('Form is null, cannot publish')
+      return
+    }
+
+    if (localBlocks.length === 0) {
+      alert('公開するブロックがありません。少なくとも1つのブロックを追加してください。')
+      return
+    }
+
     if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) return
 
     try {
       setSaving(true)
 
       // すべてのブロックをDBに保存
+      console.log(`Deleting ${form.blocks.length} existing blocks...`)
       await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
 
+      console.log(`Creating ${localBlocks.length} new blocks...`)
       for (const block of localBlocks) {
         const cleanedUpdates: {
           form_schema_id: number
@@ -164,13 +194,15 @@ export default function FormNodeViewPage() {
       }
 
       // 公開
+      console.log('Publishing form...')
       await publishFormSchema(form.id)
 
-      alert('フォームを公開しました')
+      alert('フォームを公開しました。エンドユーザーに表示されます。')
       await loadFormAndCategories()
     } catch (err) {
       console.error('Failed to publish:', err)
-      alert('公開に失敗しました')
+      const errorMsg = getErrorMessage(err)
+      alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
     } finally {
       setSaving(false)
     }
