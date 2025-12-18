@@ -77,9 +77,46 @@ export async function deleteFormSchema(id: number): Promise<void> {
 }
 
 /**
- * フォームを公開する（statusをpublishedに変更）
+ * フォームを公開する（statusをpublishedに変更 + form_blocks を published_blocks にコピー）
  */
 export async function publishFormSchema(id: number): Promise<FormSchema> {
+  // 1. 既存の公開済みブロックを削除
+  const { error: deleteError } = await supabase
+    .from('published_blocks')
+    .delete()
+    .eq('form_schema_id', id)
+
+  if (deleteError) throw deleteError
+
+  // 2. 現在のform_blocksを取得
+  const { data: currentBlocks, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', id)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  // 3. published_blocksにコピー
+  if (currentBlocks && currentBlocks.length > 0) {
+    const publishedBlocks = currentBlocks.map(block => ({
+      form_schema_id: block.form_schema_id,
+      block_type: block.block_type,
+      content: block.content,
+      sort_order: block.sort_order,
+      metadata: block.metadata,
+      show_condition: block.show_condition,
+      published_at: new Date().toISOString()
+    }))
+
+    const { error: insertError } = await supabase
+      .from('published_blocks')
+      .insert(publishedBlocks)
+
+    if (insertError) throw insertError
+  }
+
+  // 4. フォームステータスをpublishedに更新
   const { data, error } = await supabase
     .from('form_schemas')
     .update({
@@ -366,7 +403,7 @@ export async function duplicateFormSchema(sourceId: number, shopId: number): Pro
 // ==================== ブロックベースのフォームAPI ====================
 
 /**
- * 撮影カテゴリIDでフォームを取得（ブロック情報含む）
+ * 撮影カテゴリIDでフォームを取得（エンドユーザー向け・公開済みブロックのみ）
  */
 export async function getFormByShootingCategory(
   shopId: number,
@@ -392,9 +429,9 @@ export async function getFormByShootingCategory(
 
   if (!formData) return null
 
-  // ブロックを取得
-  const { data: blocksData, error: blocksError } = await supabase
-    .from('form_blocks')
+  // 公開済みブロックを取得（published_blocks テーブルから）
+  const { data: publishedBlocksData, error: blocksError } = await supabase
+    .from('published_blocks')
     .select('*')
     .eq('form_schema_id', formData.id)
     .order('sort_order', { ascending: true })
@@ -404,7 +441,7 @@ export async function getFormByShootingCategory(
   return {
     ...formData,
     shooting_category_id: formData.shooting_category_id || null,
-    blocks: blocksData || [],
+    blocks: publishedBlocksData || [],
   }
 }
 

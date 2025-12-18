@@ -54,6 +54,26 @@ export interface FormBlock {
   updated_at: string
 }
 
+// 公開済みブロック（エンドユーザーが見る）
+export interface PublishedBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+    choice_options?: ChoiceOption[]
+    choice_display?: 'radio' | 'select' | 'auto'
+    auto_sync_category_id?: number
+  }
+  show_condition: ShowCondition | null
+  created_at: string
+  updated_at: string
+  published_at: string
+}
+
 export interface FormField {
   id: number
   form_schema_id: number
@@ -184,9 +204,14 @@ export interface FormFieldWithOptions extends FormField {
   conditional_rules: ConditionalRule[]
 }
 
-// フォームとブロック
+// フォームとブロック（編集用）
 export interface FormSchemaWithBlocks extends FormSchema {
   blocks: FormBlock[]
+}
+
+// フォームと公開済みブロック（エンドユーザー向け）
+export interface FormSchemaWithPublishedBlocks extends FormSchema {
+  published_blocks: PublishedBlock[]
 }
 
 // Create/Update types for blocks
