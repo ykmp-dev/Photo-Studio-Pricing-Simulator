@@ -316,3 +316,164 @@ npm --version
 - [ ] ネットワークタブに失敗したリクエストがない
 
 すべてチェックできたら、正常に動作しています！🎉
+
+---
+
+## 🚨 自動エラー追跡システム (errorReporter)
+
+### 概要
+
+このプロジェクトには、すべてのコンソールログを自動的に収集するシステムが組み込まれています。
+手動でコンソールを確認する必要はありません。
+
+### 機能
+
+- **自動収集**: すべてのconsole.log/info/warn/error/debugを傍受
+- **セッション追跡**: 各ブラウザセッションにユニークIDを付与
+- **自動保存**: メモリ（最大100件）とlocalStorage（最大10レポート）に保存
+- **エラー時自動レポート**: console.errorが呼ばれると自動的にレポート生成
+- **グローバルエラーキャッチ**: 未処理のエラーも自動記録
+
+### 使い方
+
+#### 開発環境での確認
+
+エラーが発生すると、自動的にコンソールに詳細レポートが表示されます：
+
+```
+📊 Error Report
+Session ID: 1234567890-abc123
+URL: http://localhost:5173/admin
+Timestamp: 2025-12-18T12:00:00.000Z
+┌─────┬──────────┬─────────┬──────────┬──────────────┐
+│ ... │ timestamp│  level  │ context  │   message    │
+├─────┼──────────┼─────────┼──────────┼──────────────┤
+│ ... │   ...    │   ...   │   ...    │     ...      │
+└─────┴──────────┴─────────┴──────────┴──────────────┘
+```
+
+#### 本番環境での確認
+
+エラーは自動的にlocalStorageに保存されます。ブラウザのコンソールで以下を実行：
+
+```javascript
+// 保存されたすべてのエラーレポートを表示
+JSON.parse(localStorage.getItem('error-reports'))
+
+// 現在のセッションのログを表示
+window.errorReporter.getLogs()
+
+// レポートをJSON形式でダウンロード
+window.errorReporter.downloadReport()
+```
+
+#### 手動操作
+
+```javascript
+// 現在のログを取得（最大100件）
+window.errorReporter.getLogs()
+
+// ログをクリア
+window.errorReporter.clearLogs()
+
+// エラーレポートを手動送信
+window.errorReporter.sendReport()
+
+// レポートをダウンロード（error-report-{sessionId}.json）
+window.errorReporter.downloadReport()
+```
+
+### エラーレポートの内容
+
+ダウンロードされたレポート（JSON）には以下が含まれます：
+
+```json
+{
+  "sessionId": "1234567890-abc123",
+  "url": "https://example.com/admin",
+  "userAgent": "Mozilla/5.0...",
+  "timestamp": "2025-12-18T12:00:00.000Z",
+  "logs": [
+    {
+      "timestamp": "2025-12-18T11:59:55.000Z",
+      "level": "info",
+      "context": "FormNodeViewPage",
+      "message": "USER ACTION: Block add",
+      "data": { "blockType": "text" }
+    },
+    {
+      "timestamp": "2025-12-18T12:00:00.000Z",
+      "level": "error",
+      "context": "FormNodeViewPage",
+      "message": "API ERROR: RPC save_form_blocks",
+      "data": { "code": "PGRST202" }
+    }
+  ],
+  "error": {
+    "message": "function save_form_blocks does not exist",
+    "stack": "Error: function save_form_blocks does not exist\n    at..."
+  }
+}
+```
+
+### トラブルシューティング
+
+#### Q: エラーレポートが表示されない
+
+A: 以下を確認してください：
+1. ブラウザのコンソールが開いている
+2. `window.errorReporter` が利用可能か確認
+3. localStorageが有効になっているか確認
+
+```javascript
+// errorReporterが読み込まれているか確認
+console.log(window.errorReporter)  // undefined でなければOK
+```
+
+#### Q: 古いレポートを削除したい
+
+A: localStorageをクリアしてください：
+
+```javascript
+// エラーレポートのみ削除
+localStorage.removeItem('error-reports')
+localStorage.removeItem('error-reporter-logs')
+localStorage.removeItem('error-reporter-session')
+
+// または window.errorReporter を使用
+window.errorReporter.clearLogs()
+```
+
+#### Q: 本番環境でレポートを取得したい
+
+A: 以下の手順でダウンロードできます：
+
+1. F12キーでデベロッパーツールを開く
+2. Consoleタブを開く
+3. 以下を実行：
+   ```javascript
+   window.errorReporter.downloadReport()
+   ```
+4. `error-report-{sessionId}.json` がダウンロードされます
+
+### エラーレポートの共有
+
+問題を報告する際は、以下を含めてください：
+
+1. **エラーレポートのJSON**: `window.errorReporter.downloadReport()` で取得
+2. **再現手順**: どのような操作でエラーが発生したか
+3. **環境情報**: ブラウザ、OS、画面サイズなど
+
+---
+
+## 📚 更新履歴
+
+### 2025-12-18
+- 自動エラー追跡システム (errorReporter) を追加
+- GitHub Actions auto-merge にリトライロジックを追加
+- ビルドエラーの修正
+
+### 2025-12-17
+- TROUBLESHOOTING.md 初版作成
+- TEST_SCENARIO.md 作成
+- scripts/diagnose.sql 作成
