@@ -5,29 +5,43 @@
 
 ---
 
-## 2025-12-18: errorReporter & GitHub Actions改善
+## 2025-12-18: UI/UX改善、フォーム一覧とブロック管理分離
 
 **セッションID**: `cKRID`
 **ブランチ**: `claude/node-view-dedicated-page-cKRID`
 
 ### 作業概要
+- **フォーム一覧とブロック管理ページの分離**（UI/UX大幅改善）
+- **ノードビュー/リストビュー切り替え実装**
 - errorReporter自動ログ収集システム実装
 - GitHub Actions リトライロジック追加（タイムアウトエラー対策）
 - ドキュメント包括的更新（STATUS.md, QUICKSTART.md新規作成）
 
 ### 主な変更
+- `frontend/src/pages/FormListPage.tsx` 新規作成（フォーム一覧専用）
+- `frontend/src/pages/FormBlockEditorPage.tsx` 新規作成（ノード/リスト切り替え）
+- `frontend/src/components/admin/FormManager.tsx` 削除（1292行 → 2ファイルに分割）
+- `frontend/src/pages/FormNodeViewPage.tsx` 削除（FormBlockEditorPageに統合）
+- `frontend/src/pages/Admin.tsx` 削除（未使用）
 - `frontend/src/utils/errorReporter.ts` 新規作成
 - `.github/workflows/auto-merge.yml` にリトライロジック追加
-- DEVELOPMENT_GUIDELINES.md, TROUBLESHOOTING.md, README.md 更新
+- `App.tsx`, `AdminDashboard.tsx` ルーティング更新
 
 ### コミット
 ```
+25cee26 feat: フォーム一覧とブロック管理を分離、ノードビュー/リストビュー切り替え実装
+37b7dc9 docs: ドキュメント構造を最適化（STATUS.md, QUICKSTART.md追加）
 2295830 docs: 開発ログを包括的に更新（2025-12-16〜2025-12-18）
 48a2c59 docs: ドキュメントを更新し、errorReporterシステムを説明
 eb65b66 fix: errorReporter.tsのTypeScriptビルドエラーを修正
 63f9232 fix: GitHub Actions auto-mergeのタイムアウトエラーを修正
 791f45c feat: コンソールログ自動収集システムを実装
 ```
+
+### 重要な設計決定
+- **ページ構成**: /admin → FormListPage → FormBlockEditorPage（ノード/リスト切り替え）
+- **UI改善**: カード形式でフォーム一覧表示、ヘッダートグルで表示切り替え
+- **コード整理**: 巨大な1292行コンポーネントを削除、責任分離
 
 ---
 
