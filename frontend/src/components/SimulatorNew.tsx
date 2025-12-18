@@ -22,6 +22,8 @@ export default function SimulatorNew() {
   const [formSchema, setFormSchema] = useState<FormSchemaWithBlocks | null>(null)
   // Yes/No answers: Map<block_id, 'yes' | 'no' | null>
   const [yesNoAnswers, setYesNoAnswers] = useState<Map<number, 'yes' | 'no' | null>>(new Map())
+  // Choice answers: Map<block_id, selected_value>
+  const [choiceAnswers, setChoiceAnswers] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     loadData()
@@ -84,6 +86,44 @@ export default function SimulatorNew() {
   const priceCalculation = useMemo(() => {
     return calculateSimulatorPrice(selectedItems, campaigns)
   }, [selectedItems, campaigns])
+
+  // Choice blockの価格計算
+  const choiceTotalPrice = useMemo(() => {
+    if (!formSchema) return 0
+
+    let total = 0
+    formSchema.blocks.forEach((block) => {
+      if (block.block_type === 'choice') {
+        const selectedValue = choiceAnswers.get(block.id)
+        if (selectedValue) {
+          // カテゴリ連動モードの場合
+          if (block.metadata?.auto_sync_category_id && selectedShooting) {
+            const category = selectedShooting.product_categories.find(
+              (pc) => pc.id === block.metadata.auto_sync_category_id
+            )
+            if (category && category.items) {
+              const selectedItem = category.items.find(
+                (item) => `item_${item.id}` === selectedValue
+              )
+              if (selectedItem) {
+                total += selectedItem.price
+              }
+            }
+          }
+          // 手動入力モードの場合
+          else if (block.metadata?.choice_options) {
+            const selectedOption = block.metadata.choice_options.find(
+              (opt) => opt.value === selectedValue
+            )
+            if (selectedOption) {
+              total += selectedOption.price
+            }
+          }
+        }
+      }
+    })
+    return total
+  }, [formSchema, choiceAnswers, selectedShooting])
 
   const handleItemToggle = (item: Item, shootingCategoryId: number) => {
     // 必須アイテムは選択解除できない
@@ -202,11 +242,21 @@ export default function SimulatorNew() {
             {selectedShooting && formSchema && formSchema.blocks.length > 0 ? (
               <div className="mb-6 space-y-4">
                 {formSchema.blocks.map((block) => {
-                  // Check show_condition
+                  // Check show_condition - 条件が設定されている場合
                   if (block.show_condition) {
-                    const answer = yesNoAnswers.get(block.show_condition.block_id)
-                    if (answer !== block.show_condition.value) {
-                      return null // Don't show this block
+                    // yes_no型の条件チェック
+                    if (block.show_condition.type === 'yes_no') {
+                      const requiredAnswer = yesNoAnswers.get(block.show_condition.block_id)
+                      if (requiredAnswer !== block.show_condition.value) {
+                        return null
+                      }
+                    }
+                    // choice型の条件チェック
+                    else if (block.show_condition.type === 'choice') {
+                      const requiredAnswer = choiceAnswers.get(block.show_condition.block_id)
+                      if (requiredAnswer !== block.show_condition.value) {
+                        return null
+                      }
                     }
                   }
 
@@ -250,6 +300,129 @@ export default function SimulatorNew() {
                             いいえ
                           </button>
                         </div>
+                      </div>
+                    )
+                  }
+
+                  // Choice block
+                  if (block.block_type === 'choice') {
+                    // カテゴリ連動モードの場合、カテゴリのアイテムから選択肢を生成
+                    let options = block.metadata?.choice_options || []
+                    if (block.metadata?.auto_sync_category_id && selectedShooting) {
+                      const category = selectedShooting.product_categories.find(
+                        (pc) => pc.id === block.metadata.auto_sync_category_id
+                      )
+                      if (category && category.items) {
+                        options = category.items.map((item) => ({
+                          value: `item_${item.id}`,
+                          label: item.name,
+                          price: item.price,
+                          description: item.description || undefined,
+                        }))
+                      }
+                    }
+
+                    // 選択肢がない場合は何も表示しない
+                    if (options.length === 0) {
+                      return null
+                    }
+
+                    const currentValue = choiceAnswers.get(block.id)
+
+                    // 表示モードを決定 (auto, radio, select)
+                    let displayMode = block.metadata?.choice_display || 'auto'
+                    if (displayMode === 'auto') {
+                      displayMode = options.length <= 3 ? 'radio' : 'select'
+                    }
+
+                    return (
+                      <div key={block.id} className="border border-gray-300 rounded-lg p-4 bg-white">
+                        <p className="text-gray-800 font-medium mb-3">{block.content}</p>
+
+                        {displayMode === 'radio' ? (
+                          // ラジオボタン表示（2-3選択肢）
+                          <div className="space-y-2">
+                            {options.map((option) => (
+                              <label
+                                key={option.value}
+                                className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
+                                  currentValue === option.value
+                                    ? 'bg-blue-50 border-blue-500'
+                                    : 'border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center flex-1">
+                                  <input
+                                    type="radio"
+                                    name={`choice-${block.id}`}
+                                    value={option.value}
+                                    checked={currentValue === option.value}
+                                    onChange={() => {
+                                      setChoiceAnswers(prev => {
+                                        const newMap = new Map(prev)
+                                        newMap.set(block.id, option.value)
+                                        return newMap
+                                      })
+                                    }}
+                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 mr-3"
+                                  />
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-800">{option.label}</span>
+                                    {option.description && (
+                                      <span className="text-xs text-gray-500 block mt-1">
+                                        {option.description}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-base font-semibold text-blue-600 ml-4">
+                                  {option.price > 0 ? `+${formatPrice(option.price)}` : formatPrice(option.price)}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          // ドロップダウン表示（4+選択肢）
+                          <div>
+                            <select
+                              value={currentValue || ''}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                if (value) {
+                                  setChoiceAnswers(prev => {
+                                    const newMap = new Map(prev)
+                                    newMap.set(block.id, value)
+                                    return newMap
+                                  })
+                                } else {
+                                  setChoiceAnswers(prev => {
+                                    const newMap = new Map(prev)
+                                    newMap.delete(block.id)
+                                    return newMap
+                                  })
+                                }
+                              }}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">選択してください</option>
+                              {options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label} ({option.price > 0 ? `+${formatPrice(option.price)}` : formatPrice(option.price)})
+                                </option>
+                              ))}
+                            </select>
+                            {currentValue && (
+                              <div className="mt-2 p-2 bg-blue-50 rounded">
+                                {(() => {
+                                  const selected = options.find(opt => opt.value === currentValue)
+                                  return selected?.description ? (
+                                    <p className="text-sm text-gray-600">{selected.description}</p>
+                                  ) : null
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   }
@@ -457,7 +630,7 @@ export default function SimulatorNew() {
                 <span className="text-lg font-bold text-gray-800">合計</span>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600">
-                    {formatPrice(priceCalculation.total)}
+                    {formatPrice(priceCalculation.total + choiceTotalPrice)}
                   </div>
                   <div className="text-xs text-gray-500">（税込）</div>
                 </div>

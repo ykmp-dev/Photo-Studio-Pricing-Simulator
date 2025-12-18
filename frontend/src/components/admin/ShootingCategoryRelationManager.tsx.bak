@@ -142,7 +142,7 @@ export default function ShootingCategoryRelationManager({
     // サーバーに保存
     try {
       await updateAssociationsSortOrder(
-        newAssociations.map((a) => a.id)
+        newAssociations.map((a, i) => ({ id: a.id, sort_order: i }))
       )
     } catch (err) {
       console.error(err)
@@ -166,7 +166,7 @@ export default function ShootingCategoryRelationManager({
     // サーバーに保存
     try {
       await updateAssociationsSortOrder(
-        newAssociations.map((a) => a.id)
+        newAssociations.map((a, i) => ({ id: a.id, sort_order: i }))
       )
     } catch (err) {
       console.error(err)
