@@ -10,7 +10,6 @@ import {
   deleteFormBlock,
   updateBlocksOrder,
   publishFormSchema,
-  unpublishFormSchema,
 } from '../../services/formBuilderService'
 import { getShootingCategories, getProductCategories, getItems } from '../../services/categoryService'
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
@@ -107,9 +106,9 @@ export default function FormManager({ shopId }: FormManagerProps) {
     }
   }
 
-  const handlePublishForm = async () => {
-    logger.functionStart('handlePublishForm')
-    logger.userAction('Publish form from list view')
+  const handlePublishToCustomers = async () => {
+    logger.functionStart('handlePublishToCustomers')
+    logger.userAction('Publish to customers from list view')
 
     if (!selectedForm) {
       logger.error('No form selected')
@@ -118,18 +117,18 @@ export default function FormManager({ shopId }: FormManagerProps) {
 
     if (selectedForm.blocks.length === 0) {
       logger.validationError('blocks', 'Cannot publish form with no blocks', selectedForm.blocks.length)
-      alert('ブロックが空のフォームは公開できません。少なくとも1つのブロックを追加してください。')
+      alert('ブロックが空のフォームは反映できません。少なくとも1つのブロックを追加してください。')
       return
     }
 
-    logger.info('User confirming publish action')
-    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) {
-      logger.info('User cancelled publish action')
+    logger.info('User confirming publish to customers action')
+    if (!confirm(`「${selectedForm.name}」をお客様ページに反映しますか？\n\n※お客様には更新後のフォームが表示されます。`)) {
+      logger.info('User cancelled publish to customers action')
       return
     }
 
     try {
-      logger.info(`Publishing form: ${selectedForm.name}`, {
+      logger.info(`Publishing to customers: ${selectedForm.name}`, {
         formId: selectedForm.id,
         formName: selectedForm.name,
         blocksCount: selectedForm.blocks.length
@@ -139,9 +138,9 @@ export default function FormManager({ shopId }: FormManagerProps) {
       await publishFormSchema(selectedForm.id)
 
       logger.apiResponse('PATCH', `forms/${selectedForm.id}/publish`, 'Success')
-      logger.info('Form published successfully')
+      logger.info('Form published to customers successfully')
 
-      alert('フォームを公開しました。エンドユーザーに表示されます。')
+      alert('フォームをお客様ページに反映しました。')
 
       logger.info('Reloading form data')
       await loadData()
@@ -149,56 +148,12 @@ export default function FormManager({ shopId }: FormManagerProps) {
         await loadFormWithBlocks(selectedFormId)
       }
 
-      logger.functionEnd('handlePublishForm', 'Success')
+      logger.functionEnd('handlePublishToCustomers', 'Success')
     } catch (err) {
       logger.apiError('PATCH', `forms/${selectedForm.id}/publish`, err)
       const errorMsg = getErrorMessage(err)
-      alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
-      logger.functionEnd('handlePublishForm', 'Failed')
-    }
-  }
-
-  const handleUnpublishForm = async () => {
-    logger.functionStart('handleUnpublishForm')
-    logger.userAction('Unpublish form from list view')
-
-    if (!selectedForm) {
-      logger.error('No form selected')
-      return
-    }
-
-    logger.info('User confirming unpublish action')
-    if (!confirm('このフォームを下書きに戻しますか？エンドユーザーには表示されなくなります。')) {
-      logger.info('User cancelled unpublish action')
-      return
-    }
-
-    try {
-      logger.info(`Unpublishing form: ${selectedForm.name}`, {
-        formId: selectedForm.id,
-        formName: selectedForm.name
-      })
-      logger.apiRequest('PATCH', `forms/${selectedForm.id}/unpublish`)
-
-      await unpublishFormSchema(selectedForm.id)
-
-      logger.apiResponse('PATCH', `forms/${selectedForm.id}/unpublish`, 'Success')
-      logger.info('Form unpublished successfully')
-
-      alert('フォームを下書きに戻しました。エンドユーザーには表示されなくなります。')
-
-      logger.info('Reloading form data')
-      await loadData()
-      if (selectedFormId) {
-        await loadFormWithBlocks(selectedFormId)
-      }
-
-      logger.functionEnd('handleUnpublishForm', 'Success')
-    } catch (err) {
-      logger.apiError('PATCH', `forms/${selectedForm.id}/unpublish`, err)
-      const errorMsg = getErrorMessage(err)
-      alert(`下書きに戻すのに失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
-      logger.functionEnd('handleUnpublishForm', 'Failed')
+      alert(`反映に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handlePublishToCustomers', 'Failed')
     }
   }
 
@@ -677,21 +632,12 @@ export default function FormManager({ shopId }: FormManagerProps) {
                   >
                     👁️ プレビュー
                   </button>
-                  {selectedForm.status === 'draft' ? (
-                    <button
-                      onClick={handlePublishForm}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
-                    >
-                      ✓ 公開
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleUnpublishForm}
-                      className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm font-medium"
-                    >
-                      ← 下書きに戻す
-                    </button>
-                  )}
+                  <button
+                    onClick={handlePublishToCustomers}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  >
+                    🔄 お客様ページに反映
+                  </button>
                   <button
                     onClick={async () => {
                       if (!confirm('フォームの設定を更新しますか？')) return
