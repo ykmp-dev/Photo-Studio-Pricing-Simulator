@@ -22,19 +22,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # リトライ関数（指数バックオフ付き）
+          retry_command() {
+            local max_retries=4
+            local retry_delay=2
+            local attempt=0
+            local exit_code=0
+
+            while [ $attempt -le $max_retries ]; do
+              if [ $attempt -gt 0 ]; then
+                echo "Retrying in ${retry_delay}s... (attempt $((attempt + 1))/$((max_retries + 1)))"
+                sleep $retry_delay
+                retry_delay=$((retry_delay * 2))
+              fi
+
+              "$@" && return 0
+              exit_code=$?
+              attempt=$((attempt + 1))
+            done
+
+            echo "❌ Command failed after $((max_retries + 1)) attempts"
+            return $exit_code
+          }
+
           # ブランチ名を取得
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           echo "Current branch: $BRANCH_NAME"
 
-          # 既存のPRをチェック
-          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
+          # 既存のPRをチェック（リトライ付き）
+          echo "Checking for existing PRs..."
+          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
 
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists"
             PR_NUMBER=$EXISTING_PR
           else
             echo "Creating new PR..."
-            PR_URL=$(gh pr create \
+            PR_URL=$(retry_command gh pr create \
               --title "Auto-merge: $BRANCH_NAME" \
               --body "このPRは自動的に作成・マージされます。Claudeセッション ${BRANCH_NAME} からの変更を自動的にマージします。マージ後、GitHub Pagesに自動デプロイされます。" \
               --base main \
@@ -58,7 +82,7 @@ jobs:
               sleep 5
             fi
 
-            MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable')
+            MERGEABLE=$(retry_command gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' || echo "UNKNOWN")
             echo "Mergeable status: $MERGEABLE"
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
@@ -79,8 +103,8 @@ jobs:
             exit 1
           fi
 
-          # PRをマージ
+          # PRをマージ（リトライ付き）
           echo "Merging PR #$PR_NUMBER..."
-          gh pr merge $PR_NUMBER --merge --delete-branch
+          retry_command gh pr merge $PR_NUMBER --merge --delete-branch
 
           echo "✅ PR merged successfully!"
