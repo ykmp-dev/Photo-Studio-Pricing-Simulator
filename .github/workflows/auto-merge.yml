@@ -22,26 +22,60 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # リトライ関数（GitHub API タイムアウト対策）
+          retry_command() {
+            local max_attempts=3
+            local timeout=30
+            local attempt=1
+            local sleep_time=5
+
+            while [ $attempt -le $max_attempts ]; do
+              echo "Attempt $attempt of $max_attempts..."
+
+              if timeout $timeout "$@"; then
+                return 0
+              fi
+
+              exit_code=$?
+              if [ $attempt -lt $max_attempts ]; then
+                echo "⚠️ Command failed (exit code: $exit_code). Retrying in ${sleep_time}s..."
+                sleep $sleep_time
+                sleep_time=$((sleep_time * 2))  # 指数バックオフ
+              fi
+
+              attempt=$((attempt + 1))
+            done
+
+            echo "❌ Command failed after $max_attempts attempts"
+            return 1
+          }
+
           # ブランチ名を取得
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           echo "Current branch: $BRANCH_NAME"
 
-          # 既存のPRをチェック
-          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
+          # 既存のPRをチェック（リトライ付き）
+          echo "Checking for existing PRs..."
+          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' 2>&1 | tail -1)
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR #$EXISTING_PR already exists"
+          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+            echo "✓ PR #$EXISTING_PR already exists"
             PR_NUMBER=$EXISTING_PR
           else
             echo "Creating new PR..."
-            PR_URL=$(gh pr create \
+            PR_URL=$(retry_command gh pr create \
               --title "Auto-merge: $BRANCH_NAME" \
               --body "このPRは自動的に作成・マージされます。Claudeセッション ${BRANCH_NAME} からの変更を自動的にマージします。マージ後、GitHub Pagesに自動デプロイされます。" \
               --base main \
               --head "$BRANCH_NAME")
 
+            if [ -z "$PR_URL" ]; then
+              echo "❌ Failed to create PR"
+              exit 1
+            fi
+
             PR_NUMBER=$(echo $PR_URL | grep -oP '\d+$')
-            echo "Created PR #$PR_NUMBER"
+            echo "✓ Created PR #$PR_NUMBER"
           fi
 
           # PRがマージ可能か確認（リトライロジック付き）
@@ -58,7 +92,14 @@ jobs:
               sleep 5
             fi
 
-            MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable')
+            # リトライ付きでマージ可能性をチェック
+            MERGEABLE=$(retry_command gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' 2>&1 | tail -1)
+
+            if [ -z "$MERGEABLE" ]; then
+              echo "⚠️ Failed to get mergeable status, treating as UNKNOWN"
+              MERGEABLE="UNKNOWN"
+            fi
+
             echo "Mergeable status: $MERGEABLE"
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
@@ -79,8 +120,12 @@ jobs:
             exit 1
           fi
 
-          # PRをマージ
+          # PRをマージ（リトライ付き）
           echo "Merging PR #$PR_NUMBER..."
-          gh pr merge $PR_NUMBER --merge --delete-branch
-
-          echo "✅ PR merged successfully!"
+          if retry_command gh pr merge $PR_NUMBER --merge --delete-branch; then
+            echo "✅ PR merged successfully!"
+          else
+            echo "❌ Failed to merge PR after multiple attempts"
+            echo "Please check the PR manually: https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+            exit 1
+          fi
