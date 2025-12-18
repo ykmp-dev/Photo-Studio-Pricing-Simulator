@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   getFormWithBlocks,
-  deleteFormBlock,
-  createFormBlock,
-  updateFormSchema,
-  publishFormSchema
+  saveFormBlocks,
+  publishFormSchema,
+  unpublishFormSchema
 } from '../services/formBuilderService'
 import { getProductCategories } from '../services/categoryService'
-import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition } from '../types/formBuilder'
+import type { FormSchemaWithBlocks, FormBlock, BlockType } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
 import { getErrorMessage } from '../utils/errorMessages'
 import { createLogger } from '../utils/logger'
@@ -158,13 +157,13 @@ export default function FormNodeViewPage() {
     logger.info('Blocks reordered', { newOrder: blocks.map(b => b.id) })
   }
 
-  // 下書き保存（DBに保存、statusはdraftのまま）
-  const handleSaveDraft = async () => {
-    logger.functionStart('handleSaveDraft')
-    logger.userAction('Save draft clicked')
+  // 保存（トランザクションでform_blocksに保存、下書き状態のまま）
+  const handleSave = async () => {
+    logger.functionStart('handleSave')
+    logger.userAction('Save clicked')
 
     if (!form) {
-      logger.error('Form is null, cannot save draft')
+      logger.error('Form is null, cannot save')
       return
     }
 
@@ -174,7 +173,7 @@ export default function FormNodeViewPage() {
       return
     }
 
-    logger.info('Starting draft save process', {
+    logger.info('Starting save process', {
       formId: form.id,
       formName: form.name,
       existingBlocksCount: form.blocks.length,
@@ -185,68 +184,34 @@ export default function FormNodeViewPage() {
       logger.info('Setting saving state to true')
       setSaving(true)
 
-      // すべてのブロックをDBに保存
-      // 既存のブロックを全削除して再作成（簡略化）
-      logger.apiRequest('DELETE', `form-blocks (bulk)`, {
+      // トランザクション関数で一括保存
+      logger.apiRequest('RPC', 'save_form_blocks', {
         formId: form.id,
-        count: form.blocks.length
+        blocksCount: localBlocks.length
       })
-      await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
-      logger.apiResponse('DELETE', `form-blocks (bulk)`, 'Success')
 
-      logger.apiRequest('POST', `form-blocks (bulk)`, {
-        formId: form.id,
-        count: localBlocks.length
-      })
-      for (const [index, block] of localBlocks.entries()) {
-        logger.debug(`Creating block ${index + 1}/${localBlocks.length}`, {
-          blockType: block.block_type,
-          content: block.content?.substring(0, 50)
-        })
+      await saveFormBlocks(form.id, localBlocks)
 
-        const cleanedUpdates: {
-          form_schema_id: number
-          block_type: BlockType
-          content?: string
-          sort_order: number
-          metadata?: any
-          show_condition?: ShowCondition | null
-        } = {
-          form_schema_id: form.id,
-          block_type: block.block_type,
-          content: block.content === null ? undefined : block.content,
-          sort_order: block.sort_order,
-          metadata: block.metadata,
-          show_condition: block.show_condition,
-        }
-        await createFormBlock(cleanedUpdates)
-      }
-      logger.apiResponse('POST', `form-blocks (bulk)`, 'Success')
-
-      // ステータスはdraftのまま
-      logger.apiRequest('PATCH', `forms/${form.id}`, { status: 'draft' })
-      await updateFormSchema(form.id, { status: 'draft' })
-      logger.apiResponse('PATCH', `forms/${form.id}`, 'Success')
-
-      logger.info('Draft saved successfully')
-      alert('下書きを保存しました')
+      logger.apiResponse('RPC', 'save_form_blocks', 'Success')
+      logger.info('Form saved successfully')
+      alert('保存しました')
 
       logger.info('Reloading form data')
       await loadFormAndCategories()
 
-      logger.functionEnd('handleSaveDraft', 'Success')
+      logger.functionEnd('handleSave', 'Success')
     } catch (err) {
-      logger.apiError('POST/PATCH', 'save-draft', err)
+      logger.apiError('RPC', 'save_form_blocks', err)
       const errorMsg = getErrorMessage(err)
-      alert(`下書き保存に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
-      logger.functionEnd('handleSaveDraft', 'Failed')
+      alert(`保存に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handleSave', 'Failed')
     } finally {
       logger.info('Setting saving state to false')
       setSaving(false)
     }
   }
 
-  // 公開（DBに保存 + statusをpublishedに変更）
+  // 公開（保存 + published_blocksにコピー）
   const handlePublish = async () => {
     logger.functionStart('handlePublish')
     logger.userAction('Publish clicked')
@@ -262,8 +227,12 @@ export default function FormNodeViewPage() {
       return
     }
 
-    logger.info('User confirming publish action')
-    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) {
+    const message = hasChanges
+      ? 'このフォームを保存して公開しますか？エンドユーザーに表示されます。'
+      : 'このフォームを公開しますか？エンドユーザーに表示されます。'
+
+    logger.info('User confirming publish action', { hasChanges })
+    if (!confirm(message)) {
       logger.info('User cancelled publish action')
       return
     }
@@ -271,7 +240,7 @@ export default function FormNodeViewPage() {
     logger.info('Starting publish process', {
       formId: form.id,
       formName: form.name,
-      existingBlocksCount: form.blocks.length,
+      hasChanges,
       localBlocksCount: localBlocks.length
     })
 
@@ -279,44 +248,21 @@ export default function FormNodeViewPage() {
       logger.info('Setting saving state to true')
       setSaving(true)
 
-      // すべてのブロックをDBに保存
-      logger.apiRequest('DELETE', `form-blocks (bulk)`, {
-        formId: form.id,
-        count: form.blocks.length
-      })
-      await Promise.all(form.blocks.map(b => deleteFormBlock(b.id)))
-      logger.apiResponse('DELETE', `form-blocks (bulk)`, 'Success')
-
-      logger.apiRequest('POST', `form-blocks (bulk)`, {
-        formId: form.id,
-        count: localBlocks.length
-      })
-      for (const [index, block] of localBlocks.entries()) {
-        logger.debug(`Creating block ${index + 1}/${localBlocks.length}`, {
-          blockType: block.block_type,
-          content: block.content?.substring(0, 50)
+      // 未保存の変更がある場合は先に保存
+      if (hasChanges) {
+        logger.info('Saving changes before publish')
+        logger.apiRequest('RPC', 'save_form_blocks', {
+          formId: form.id,
+          blocksCount: localBlocks.length
         })
 
-        const cleanedUpdates: {
-          form_schema_id: number
-          block_type: BlockType
-          content?: string
-          sort_order: number
-          metadata?: any
-          show_condition?: ShowCondition | null
-        } = {
-          form_schema_id: form.id,
-          block_type: block.block_type,
-          content: block.content === null ? undefined : block.content,
-          sort_order: block.sort_order,
-          metadata: block.metadata,
-          show_condition: block.show_condition,
-        }
-        await createFormBlock(cleanedUpdates)
-      }
-      logger.apiResponse('POST', `form-blocks (bulk)`, 'Success')
+        await saveFormBlocks(form.id, localBlocks)
 
-      // 公開
+        logger.apiResponse('RPC', 'save_form_blocks', 'Success')
+        logger.info('Changes saved successfully')
+      }
+
+      // 公開（form_blocks → published_blocks にコピー）
       logger.apiRequest('PATCH', `forms/${form.id}/publish`, { status: 'published' })
       await publishFormSchema(form.id)
       logger.apiResponse('PATCH', `forms/${form.id}/publish`, 'Success')
@@ -332,10 +278,61 @@ export default function FormNodeViewPage() {
 
       logger.functionEnd('handlePublish', 'Success')
     } catch (err) {
-      logger.apiError('POST/PATCH', 'publish', err)
+      logger.apiError('PATCH', 'publish', err)
       const errorMsg = getErrorMessage(err)
       alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
       logger.functionEnd('handlePublish', 'Failed')
+    } finally {
+      logger.info('Setting saving state to false')
+      setSaving(false)
+    }
+  }
+
+  // 非公開に戻す（published_blocksを削除、status='draft'に）
+  const handleUnpublish = async () => {
+    logger.functionStart('handleUnpublish')
+    logger.userAction('Unpublish clicked')
+
+    if (!form) {
+      logger.error('Form is null, cannot unpublish')
+      return
+    }
+
+    logger.info('User confirming unpublish action')
+    if (!confirm('このフォームを非公開にしますか？エンドユーザーに表示されなくなります。')) {
+      logger.info('User cancelled unpublish action')
+      return
+    }
+
+    logger.info('Starting unpublish process', {
+      formId: form.id,
+      formName: form.name
+    })
+
+    try {
+      logger.info('Setting saving state to true')
+      setSaving(true)
+
+      // 非公開
+      logger.apiRequest('PATCH', `forms/${form.id}/unpublish`, { status: 'draft' })
+      await unpublishFormSchema(form.id)
+      logger.apiResponse('PATCH', `forms/${form.id}/unpublish`, 'Success')
+
+      logger.info('Form unpublished successfully', {
+        formId: form.id,
+        formName: form.name
+      })
+      alert('フォームを非公開にしました。')
+
+      logger.info('Reloading form data')
+      await loadFormAndCategories()
+
+      logger.functionEnd('handleUnpublish', 'Success')
+    } catch (err) {
+      logger.apiError('PATCH', 'unpublish', err)
+      const errorMsg = getErrorMessage(err)
+      alert(`非公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handleUnpublish', 'Failed')
     } finally {
       logger.info('Setting saving state to false')
       setSaving(false)
@@ -373,11 +370,25 @@ export default function FormNodeViewPage() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">{form.name}</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  ノードビュー
-                  {form.status === 'published' && <span className="ml-2 text-green-600 font-semibold">● 公開中</span>}
-                  {form.status === 'draft' && <span className="ml-2 text-yellow-600 font-semibold">● 下書き</span>}
-                </p>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                  <span>ノードビュー</span>
+                  {form.status === 'published' && (
+                    <>
+                      <span className="text-green-600 font-semibold">● 公開中</span>
+                      {form.published_at && (
+                        <span className="text-gray-600">
+                          最終公開: {new Date(form.published_at).toLocaleString('ja-JP')}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {form.status === 'draft' && <span className="text-yellow-600 font-semibold">● 下書き</span>}
+                  {form.updated_at && (
+                    <span className="text-gray-600">
+                      最終更新: {new Date(form.updated_at).toLocaleString('ja-JP')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -386,19 +397,28 @@ export default function FormNodeViewPage() {
                 {hasChanges && <span className="ml-2 text-orange-600 font-semibold">● 未保存の変更</span>}
               </div>
               <button
-                onClick={handleSaveDraft}
+                onClick={handleSave}
                 disabled={!hasChanges || saving}
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {saving ? '保存中...' : '下書き保存'}
+                {saving ? '保存中...' : (hasChanges ? '保存' : '保存済み')}
               </button>
               <button
                 onClick={handlePublish}
-                disabled={saving}
+                disabled={saving || localBlocks.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
               >
-                {saving ? '公開中...' : '公開'}
+                {saving ? '処理中...' : (form.status === 'published' && hasChanges ? '変更を公開' : '公開')}
               </button>
+              {form.status === 'published' && (
+                <button
+                  onClick={handleUnpublish}
+                  disabled={saving}
+                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving ? '処理中...' : '非公開に戻す'}
+                </button>
+              )}
             </div>
           </div>
         </div>
