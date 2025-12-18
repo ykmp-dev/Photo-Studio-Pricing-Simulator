@@ -27,10 +27,10 @@ class ErrorReporter {
   private logs: LogEntry[] = []
   private maxLogs = 100 // 最大保持ログ数
   private sessionId: string
-  private reportEndpoint = '/api/logs' // バックエンドのエンドポイント（未実装）
 
   constructor() {
     this.sessionId = this.generateSessionId()
+    this.loadFromLocalStorage() // ページリロード時に以前のログを復元
     this.setupConsoleInterceptor()
     this.setupErrorHandlers()
   }
@@ -192,7 +192,7 @@ class ErrorReporter {
     if (!import.meta.env.DEV) {
       try {
         // TODO: バックエンドAPIを実装したら有効化
-        // await fetch(this.reportEndpoint, {
+        // await fetch('/api/logs', {
         //   method: 'POST',
         //   headers: {
         //     'Content-Type': 'application/json',
