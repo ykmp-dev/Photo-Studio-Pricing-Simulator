@@ -134,8 +134,13 @@ jobs:
             echo "success=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup Pages
+      - name: Setup Pages (with retry)
         if: steps.build.outcome == 'success'
+        continue-on-error: true
+        uses: actions/configure-pages@v4
+
+      - name: Retry Setup Pages on failure
+        if: steps.build.outcome == 'success' && failure()
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
