@@ -7,6 +7,8 @@
 ## 🚀 現在の状態
 
 ### 完了済み
+- ✅ **フォーム一覧とブロック管理を分離** - FormListPage（一覧）+ FormBlockEditorPage（編集）
+- ✅ **ノードビュー/リストビュー切り替え実装** - ヘッダートグルで表示形式変更可能
 - ✅ **ノードビューUI実装完了** - React Flowで視覚的なフォーム編集
 - ✅ **published_blocks分離完了** - お客様への影響なしで編集可能
 - ✅ **errorReporter自動ログ収集完了** - 手動確認不要
@@ -14,7 +16,7 @@
 - ✅ **包括的なドキュメント整備完了** - 診断ツール、トラブルシューティングガイド
 
 ### 保留中
-- ⏳ **Choice管理UI未実装**（優先度低） - 現状は直接DBで設定可能
+なし
 
 ---
 
@@ -51,6 +53,18 @@
 
 ## 🔑 重要な設計決定
 
+### ページ構成とナビゲーション
+```
+/admin
+  ↓ フォームビルダータブ
+FormListPage（フォーム一覧）
+  ↓ フォームカードをクリック
+FormBlockEditorPage（ブロック管理）
+  ├─ ノードビュー（React Flow）
+  └─ リストビュー（従来形式）
+    ↑ ヘッダートグルで切り替え
+```
+
 ### データフロー
 ```
 管理画面で編集
@@ -82,7 +96,9 @@ published_blocks（DB）← お客様ページに反映
 ## 📍 重要なファイルと場所
 
 ### コア実装
-- `frontend/src/pages/FormNodeViewPage.tsx:810-826` - 保存/更新ボタン実装
+- `frontend/src/pages/FormListPage.tsx` - フォーム一覧ページ（カード表示）
+- `frontend/src/pages/FormBlockEditorPage.tsx` - ブロック管理ページ（ノード/リスト切り替え）
+- `frontend/src/components/admin/FormBuilderCanvas.tsx` - ノードビュー（React Flow）
 - `frontend/src/utils/errorReporter.ts` - 自動ログ収集システム
 - `frontend/src/utils/logger.ts` - 統一ログ出力
 
@@ -105,6 +121,10 @@ published_blocks（DB）← お客様ページに反映
 ## 📊 最近の主要変更（2025-12-16〜2025-12-18）
 
 ### 2025-12-18
+- **フォーム一覧とブロック管理を分離**（UI/UX大幅改善）
+  - FormListPage: フォーム一覧専用（グリッド表示）
+  - FormBlockEditorPage: ブロック管理専用（ノード/リスト切り替え）
+  - 巨大な1292行FormManagerを分割・削除
 - errorReporter自動ログ収集システム実装
 - GitHub Actions リトライロジック追加（タイムアウト対策）
 - ドキュメント包括的更新
