@@ -638,25 +638,6 @@ export default function FormManager({ shopId }: FormManagerProps) {
                   >
                     更新
                   </button>
-                  <button
-                    onClick={async () => {
-                      if (!confirm('フォームの設定を更新しますか？')) return
-                      try {
-                        // Reload to reflect any unsaved changes
-                        await loadData()
-                        if (selectedFormId) {
-                          await loadFormWithBlocks(selectedFormId)
-                        }
-                        alert('フォームを更新しました')
-                      } catch (err) {
-                        console.error(err)
-                        alert('更新に失敗しました: ' + getErrorMessage(err))
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-                  >
-                    🔄 更新
-                  </button>
                 </div>
               </div>
 
