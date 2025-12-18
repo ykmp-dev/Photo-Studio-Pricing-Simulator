@@ -19,10 +19,12 @@
 - 「29,800円（税込）」のような表記
 - 税抜価格は表示しない
 
-### 4. デバッグログ
+### 4. デバッグログとエラー追跡
 - 開発中は詳細なデバッグログを追加してOK
-- 本番デプロイ前に必ず削除すること
-- `console.log()`, `console.warn()`, `console.error()` は本番では削除
+- **自動ログ収集システム**: すべてのconsoleログは自動的に収集される（errorReporter）
+- 開発環境: コンソールにエラーレポート出力
+- 本番環境: localStorageに自動保存（最新10件）
+- 手動ダウンロード: `window.errorReporter.downloadReport()` で取得可能
 
 ## プロジェクト構造
 
@@ -39,12 +41,21 @@ Photo-Studio-Pricing-Simulator/
 │   │   │   ├── formBuilderService.ts  # フォーム関連API
 │   │   │   ├── categoryService.ts     # カテゴリ関連API
 │   │   │   └── simulatorService.ts    # シミュレーター用API
+│   │   ├── utils/
+│   │   │   ├── logger.ts              # ログ出力ユーティリティ
+│   │   │   └── errorReporter.ts       # 自動ログ収集システム
 │   │   └── types/
 │   │       ├── formBuilder.ts         # フォーム型定義
 │   │       ├── category.ts            # カテゴリ型定義
 │   │       └── campaign.ts            # キャンペーン型定義
 ├── supabase/
 │   └── migrations/                    # DBマイグレーション
+├── scripts/
+│   ├── diagnose.sql                   # データベース診断スクリプト
+│   └── setup-e2e-tests.sh             # E2Eテスト環境セットアップ
+├── .github/workflows/
+│   ├── deploy.yml                     # GitHub Pages自動デプロイ
+│   └── auto-merge.yml                 # Claude PRの自動マージ
 └── .claude/
     ├── DEVELOPMENT_GUIDELINES.md      # このファイル
     └── DEVELOPMENT_LOG.md             # 開発ログ
@@ -166,8 +177,68 @@ main                         # 本番環境
 - **らかんスタジオ**: ドロップダウン方式の料金シミュレーター
 - **横浜そごう写真館**: 3択プラン → 詳細分岐の料金体系
 
+## エラー追跡システム (errorReporter)
+
+### 概要
+すべてのコンソールログ（log/info/warn/error/debug）を自動的に収集し、エラー発生時に詳細レポートを生成します。
+
+### 機能
+- **自動インターセプト**: すべてのconsoleメソッドを傍受
+- **セッション管理**: 各セッションにユニークIDを付与
+- **自動保存**: localStorageとメモリに最大100件保存
+- **エラー時自動送信**: console.errorが呼ばれたら自動レポート
+- **グローバルエラーハンドラ**: キャッチされないエラーも記録
+
+### 使い方
+
+#### 開発環境
+エラーが発生すると、自動的にコンソールに詳細レポートが表示されます：
+```
+📊 Error Report
+Session ID: 1234567890-abc123
+URL: http://localhost:5173/admin
+Timestamp: 2025-12-18T12:00:00.000Z
+[最新20件のログがテーブル形式で表示]
+```
+
+#### 本番環境
+エラーは自動的にlocalStorageに保存されます：
+```javascript
+// ブラウザコンソールで確認
+localStorage.getItem('error-reports')
+
+// または手動ダウンロード
+window.errorReporter.downloadReport()
+```
+
+#### 手動操作
+```javascript
+// ログ一覧を取得
+window.errorReporter.getLogs()
+
+// ログをクリア
+window.errorReporter.clearLogs()
+
+// レポートをJSON形式でダウンロード
+window.errorReporter.downloadReport()
+```
+
+### トラブルシューティング
+詳細は `TROUBLESHOOTING.md` を参照してください。
+
+## GitHub Actions
+
+### auto-merge.yml
+- claude/** ブランチへのpush時に自動PR作成・マージ
+- **リトライロジック**: GitHub API接続エラーに対して指数バックオフ（最大5回）
+- タイムアウトエラー対策済み
+
+### deploy.yml
+- main ブランチへのpush時に自動でGitHub Pagesにデプロイ
+- Viteビルド → GitHub Pages アップロード
+
 ## 最終更新
 
-- 日付: 2025-12-15
-- 更新者: Claude Code (Session: 01BmvtLhyedN4MCeLRHfWDFK)
-- 変更内容: choiceブロック設計確定、開発ガイドライン初版作成
+- 日付: 2025-12-18
+- 更新者: Claude Code (Session: cKRID)
+- 変更内容: errorReporter自動ログ収集システム実装、GitHub Actionsリトライロジック追加
