@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   getFormWithBlocks,
   saveFormBlocks,
-  publishFormSchema,
-  unpublishFormSchema
+  publishFormSchema
 } from '../services/formBuilderService'
 import { getProductCategories } from '../services/categoryService'
 import type { FormSchemaWithBlocks, FormBlock, BlockType } from '../types/formBuilder'
@@ -225,33 +224,33 @@ export default function FormNodeViewPage() {
     }
   }
 
-  // 公開（保存 + published_blocksにコピー）
-  const handlePublish = async () => {
-    logger.functionStart('handlePublish')
-    logger.userAction('Publish clicked')
+  // 更新（保存 + published_blocksにコピー）
+  const handleUpdate = async () => {
+    logger.functionStart('handleUpdate')
+    logger.userAction('Update clicked')
 
     if (!form) {
-      logger.error('Form is null, cannot publish')
+      logger.error('Form is null, cannot update')
       return
     }
 
     if (localBlocks.length === 0) {
-      logger.validationError('localBlocks', 'No blocks to publish', localBlocks.length)
-      alert('公開するブロックがありません。少なくとも1つのブロックを追加してください。')
+      logger.validationError('localBlocks', 'No blocks to update', localBlocks.length)
+      alert('更新するブロックがありません。少なくとも1つのブロックを追加してください。')
       return
     }
 
     const message = hasChanges
-      ? 'このフォームを保存して公開しますか？エンドユーザーに表示されます。'
-      : 'このフォームを公開しますか？エンドユーザーに表示されます。'
+      ? 'このフォームを保存してお客様ページに反映しますか？\n\n※お客様には更新後のフォームが表示されます。'
+      : '現在の内容をお客様ページに反映しますか？'
 
-    logger.info('User confirming publish action', { hasChanges })
+    logger.info('User confirming update action', { hasChanges })
     if (!confirm(message)) {
-      logger.info('User cancelled publish action')
+      logger.info('User cancelled update action')
       return
     }
 
-    logger.info('Starting publish process', {
+    logger.info('Starting update process', {
       formId: form.id,
       formName: form.name,
       hasChanges,
@@ -264,7 +263,7 @@ export default function FormNodeViewPage() {
 
       // 未保存の変更がある場合は先に保存
       if (hasChanges) {
-        logger.info('Saving changes before publish')
+        logger.info('Saving changes before update')
         logger.apiRequest('RPC', 'save_form_blocks', {
           formId: form.id,
           blocksCount: localBlocks.length
@@ -276,77 +275,26 @@ export default function FormNodeViewPage() {
         logger.info('Changes saved successfully')
       }
 
-      // 公開（form_blocks → published_blocks にコピー）
-      logger.apiRequest('PATCH', `forms/${form.id}/publish`, { status: 'published' })
+      // 更新（form_blocks → published_blocks にコピー）
+      logger.apiRequest('PATCH', `forms/${form.id}/publish`)
       await publishFormSchema(form.id)
       logger.apiResponse('PATCH', `forms/${form.id}/publish`, 'Success')
 
-      logger.info('Form published successfully', {
+      logger.info('Form updated successfully', {
         formId: form.id,
         formName: form.name
       })
-      alert('フォームを公開しました。エンドユーザーに表示されます。')
+      alert('フォームを更新しました。お客様ページに反映されます。')
 
       logger.info('Reloading form data')
       await loadFormAndCategories()
 
-      logger.functionEnd('handlePublish', 'Success')
+      logger.functionEnd('handleUpdate', 'Success')
     } catch (err) {
-      logger.apiError('PATCH', 'publish', err)
+      logger.apiError('PATCH', 'update', err)
       const errorMsg = getErrorMessage(err)
-      alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
-      logger.functionEnd('handlePublish', 'Failed')
-    } finally {
-      logger.info('Setting saving state to false')
-      setSaving(false)
-    }
-  }
-
-  // 非公開に戻す（published_blocksを削除、status='draft'に）
-  const handleUnpublish = async () => {
-    logger.functionStart('handleUnpublish')
-    logger.userAction('Unpublish clicked')
-
-    if (!form) {
-      logger.error('Form is null, cannot unpublish')
-      return
-    }
-
-    logger.info('User confirming unpublish action')
-    if (!confirm('このフォームを非公開にしますか？エンドユーザーに表示されなくなります。')) {
-      logger.info('User cancelled unpublish action')
-      return
-    }
-
-    logger.info('Starting unpublish process', {
-      formId: form.id,
-      formName: form.name
-    })
-
-    try {
-      logger.info('Setting saving state to true')
-      setSaving(true)
-
-      // 非公開
-      logger.apiRequest('PATCH', `forms/${form.id}/unpublish`, { status: 'draft' })
-      await unpublishFormSchema(form.id)
-      logger.apiResponse('PATCH', `forms/${form.id}/unpublish`, 'Success')
-
-      logger.info('Form unpublished successfully', {
-        formId: form.id,
-        formName: form.name
-      })
-      alert('フォームを非公開にしました。')
-
-      logger.info('Reloading form data')
-      await loadFormAndCategories()
-
-      logger.functionEnd('handleUnpublish', 'Success')
-    } catch (err) {
-      logger.apiError('PATCH', 'unpublish', err)
-      const errorMsg = getErrorMessage(err)
-      alert(`非公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
-      logger.functionEnd('handleUnpublish', 'Failed')
+      alert(`更新に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handleUpdate', 'Failed')
     } finally {
       logger.info('Setting saving state to false')
       setSaving(false)
@@ -386,20 +334,14 @@ export default function FormNodeViewPage() {
                 <h1 className="text-2xl font-bold text-gray-800">{form.name}</h1>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                   <span>ノードビュー</span>
-                  {form.status === 'published' && (
-                    <>
-                      <span className="text-green-600 font-semibold">● 公開中</span>
-                      {form.published_at && (
-                        <span className="text-gray-600">
-                          最終公開: {new Date(form.published_at).toLocaleString('ja-JP')}
-                        </span>
-                      )}
-                    </>
+                  {form.published_at && (
+                    <span className="text-gray-600">
+                      最終反映: {new Date(form.published_at).toLocaleString('ja-JP')}
+                    </span>
                   )}
-                  {form.status === 'draft' && <span className="text-yellow-600 font-semibold">● 下書き</span>}
                   {form.updated_at && (
                     <span className="text-gray-600">
-                      最終更新: {new Date(form.updated_at).toLocaleString('ja-JP')}
+                      最終保存: {new Date(form.updated_at).toLocaleString('ja-JP')}
                     </span>
                   )}
                 </div>
@@ -418,21 +360,12 @@ export default function FormNodeViewPage() {
                 {saving ? '保存中...' : (hasChanges ? '保存' : '保存済み')}
               </button>
               <button
-                onClick={handlePublish}
+                onClick={handleUpdate}
                 disabled={saving || localBlocks.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
               >
-                {saving ? '処理中...' : (form.status === 'published' && hasChanges ? '変更を公開' : '公開')}
+                {saving ? '更新中...' : 'お客様ページに反映'}
               </button>
-              {form.status === 'published' && (
-                <button
-                  onClick={handleUnpublish}
-                  disabled={saving}
-                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  {saving ? '処理中...' : '非公開に戻す'}
-                </button>
-              )}
             </div>
           </div>
         </div>
