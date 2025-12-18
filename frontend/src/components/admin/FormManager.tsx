@@ -105,36 +105,53 @@ export default function FormManager({ shopId }: FormManagerProps) {
   }
 
   const handlePublishForm = async () => {
-    if (!selectedForm) return
+    if (!selectedForm) {
+      console.error('No form selected')
+      return
+    }
+
+    if (selectedForm.blocks.length === 0) {
+      alert('ブロックが空のフォームは公開できません。少なくとも1つのブロックを追加してください。')
+      return
+    }
+
     if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) return
 
     try {
+      console.log(`Publishing form: ${selectedForm.name} (ID: ${selectedForm.id})`)
       await publishFormSchema(selectedForm.id)
-      alert('フォームを公開しました')
+      alert('フォームを公開しました。エンドユーザーに表示されます。')
       await loadData()
       if (selectedFormId) {
         await loadFormWithBlocks(selectedFormId)
       }
     } catch (err) {
-      console.error(err)
-      alert('公開に失敗しました: ' + getErrorMessage(err))
+      console.error('Failed to publish form:', err)
+      const errorMsg = getErrorMessage(err)
+      alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
     }
   }
 
   const handleUnpublishForm = async () => {
-    if (!selectedForm) return
+    if (!selectedForm) {
+      console.error('No form selected')
+      return
+    }
+
     if (!confirm('このフォームを下書きに戻しますか？エンドユーザーには表示されなくなります。')) return
 
     try {
+      console.log(`Unpublishing form: ${selectedForm.name} (ID: ${selectedForm.id})`)
       await unpublishFormSchema(selectedForm.id)
-      alert('フォームを下書きに戻しました')
+      alert('フォームを下書きに戻しました。エンドユーザーには表示されなくなります。')
       await loadData()
       if (selectedFormId) {
         await loadFormWithBlocks(selectedFormId)
       }
     } catch (err) {
-      console.error(err)
-      alert('下書きに戻すのに失敗しました: ' + getErrorMessage(err))
+      console.error('Failed to unpublish form:', err)
+      const errorMsg = getErrorMessage(err)
+      alert(`下書きに戻すのに失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
     }
   }
 
