@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -11,6 +11,8 @@ import ReactFlow, {
   BackgroundVariant,
   MiniMap,
   NodeMouseHandler,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import type { FormBlock, BlockType } from '../../types/formBuilder'
@@ -235,7 +237,7 @@ function blocksToEdges(blocks: FormBlock[]): Edge[] {
   return edges
 }
 
-export default function FormBuilderCanvas({
+function FormBuilderCanvasInner({
   blocks,
   productCategories,
   onBlockUpdate,
@@ -246,6 +248,8 @@ export default function FormBuilderCanvas({
 }: FormBuilderCanvasProps) {
   const [editingBlock, setEditingBlock] = useState<FormBlock | null>(null)
   const [copiedBlock, setCopiedBlock] = useState<FormBlock | null>(null)  // コピーしたブロック
+  const previousBlockCountRef = useRef(blocks.length)
+  const { fitView } = useReactFlow()
 
   // ブロックをコピー
   const handleCopyBlock = useCallback((block: FormBlock) => {
@@ -261,6 +265,17 @@ export default function FormBuilderCanvas({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
+  // 新しいブロックが追加されたときにフォーカス
+  useEffect(() => {
+    if (blocks.length > previousBlockCountRef.current) {
+      // ブロックが追加された
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 })
+      }, 100)
+    }
+    previousBlockCountRef.current = blocks.length
+  }, [blocks.length, fitView])
 
   // 自動レイアウト整理
   const handleAutoLayout = useCallback(() => {
@@ -313,7 +328,7 @@ export default function FormBuilderCanvas({
 
         const sourceBlock = blocks.find((b) => b.id === sourceBlockId)
         let conditionValue = 'next'  // デフォルト値
-        let conditionType: 'yes_no' | 'choice' = 'choice'
+        let conditionType: 'yes_no' | 'choice' | 'next' = 'next'
 
         // ブロックタイプに応じて条件値を設定
         if (sourceBlock?.block_type === 'yes_no') {
@@ -324,8 +339,11 @@ export default function FormBuilderCanvas({
           // Choice blockの場合、最初の選択肢をデフォルトにする
           const options = sourceBlock.metadata?.choice_options || []
           conditionValue = options[0]?.value || 'next'
+        } else {
+          // text/heading/category_referenceの場合は'next'タイプを使用
+          conditionType = 'next'
+          conditionValue = 'next'
         }
-        // text/heading/category_referenceの場合は'next'を使用
 
         onBlockUpdate(targetBlockId, {
           show_condition: {
@@ -483,5 +501,14 @@ export default function FormBuilderCanvas({
         />
       )}
     </div>
+  )
+}
+
+// ReactFlowProviderでラップしたデフォルトエクスポート
+export default function FormBuilderCanvas(props: FormBuilderCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <FormBuilderCanvasInner {...props} />
+    </ReactFlowProvider>
   )
 }
