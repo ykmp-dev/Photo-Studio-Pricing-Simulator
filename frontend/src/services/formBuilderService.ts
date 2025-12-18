@@ -540,3 +540,34 @@ export async function updateBlocksOrder(blockIds: number[]): Promise<void> {
 
   await Promise.all(updates)
 }
+
+/**
+ * フォームブロックを一括保存（トランザクション）
+ * PostgreSQL関数を使用して、全削除→全挿入を原子的に実行
+ */
+export async function saveFormBlocks(
+  formId: number,
+  blocks: Array<{
+    block_type: BlockType
+    content?: string | null
+    sort_order: number
+    metadata?: any
+    show_condition?: ShowCondition | null
+  }>
+): Promise<void> {
+  // ブロックデータをJSONB形式に変換
+  const blocksJson = blocks.map(block => ({
+    block_type: block.block_type,
+    content: block.content || null,
+    sort_order: block.sort_order,
+    metadata: block.metadata || {},
+    show_condition: block.show_condition || null,
+  }))
+
+  const { error } = await supabase.rpc('save_form_blocks', {
+    p_form_id: formId,
+    p_blocks: blocksJson as any,
+  })
+
+  if (error) throw error
+}
