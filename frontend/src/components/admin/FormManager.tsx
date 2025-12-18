@@ -16,6 +16,9 @@ import { getShootingCategories, getProductCategories, getItems } from '../../ser
 import type { FormSchema, FormBlock, BlockType, FormSchemaWithBlocks, ShowCondition, ChoiceOption } from '../../types/formBuilder'
 import type { ShootingCategory, Item } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
+import { createLogger } from '../../utils/logger'
+
+const logger = createLogger('FormManager')
 
 interface FormManagerProps {
   shopId: number
@@ -105,53 +108,97 @@ export default function FormManager({ shopId }: FormManagerProps) {
   }
 
   const handlePublishForm = async () => {
+    logger.functionStart('handlePublishForm')
+    logger.userAction('Publish form from list view')
+
     if (!selectedForm) {
-      console.error('No form selected')
+      logger.error('No form selected')
       return
     }
 
     if (selectedForm.blocks.length === 0) {
+      logger.validationError('blocks', 'Cannot publish form with no blocks', selectedForm.blocks.length)
       alert('ブロックが空のフォームは公開できません。少なくとも1つのブロックを追加してください。')
       return
     }
 
-    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) return
+    logger.info('User confirming publish action')
+    if (!confirm('このフォームを公開しますか？エンドユーザーに表示されます。')) {
+      logger.info('User cancelled publish action')
+      return
+    }
 
     try {
-      console.log(`Publishing form: ${selectedForm.name} (ID: ${selectedForm.id})`)
+      logger.info(`Publishing form: ${selectedForm.name}`, {
+        formId: selectedForm.id,
+        formName: selectedForm.name,
+        blocksCount: selectedForm.blocks.length
+      })
+      logger.apiRequest('PATCH', `forms/${selectedForm.id}/publish`)
+
       await publishFormSchema(selectedForm.id)
+
+      logger.apiResponse('PATCH', `forms/${selectedForm.id}/publish`, 'Success')
+      logger.info('Form published successfully')
+
       alert('フォームを公開しました。エンドユーザーに表示されます。')
+
+      logger.info('Reloading form data')
       await loadData()
       if (selectedFormId) {
         await loadFormWithBlocks(selectedFormId)
       }
+
+      logger.functionEnd('handlePublishForm', 'Success')
     } catch (err) {
-      console.error('Failed to publish form:', err)
+      logger.apiError('PATCH', `forms/${selectedForm.id}/publish`, err)
       const errorMsg = getErrorMessage(err)
       alert(`公開に失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handlePublishForm', 'Failed')
     }
   }
 
   const handleUnpublishForm = async () => {
+    logger.functionStart('handleUnpublishForm')
+    logger.userAction('Unpublish form from list view')
+
     if (!selectedForm) {
-      console.error('No form selected')
+      logger.error('No form selected')
       return
     }
 
-    if (!confirm('このフォームを下書きに戻しますか？エンドユーザーには表示されなくなります。')) return
+    logger.info('User confirming unpublish action')
+    if (!confirm('このフォームを下書きに戻しますか？エンドユーザーには表示されなくなります。')) {
+      logger.info('User cancelled unpublish action')
+      return
+    }
 
     try {
-      console.log(`Unpublishing form: ${selectedForm.name} (ID: ${selectedForm.id})`)
+      logger.info(`Unpublishing form: ${selectedForm.name}`, {
+        formId: selectedForm.id,
+        formName: selectedForm.name
+      })
+      logger.apiRequest('PATCH', `forms/${selectedForm.id}/unpublish`)
+
       await unpublishFormSchema(selectedForm.id)
+
+      logger.apiResponse('PATCH', `forms/${selectedForm.id}/unpublish`, 'Success')
+      logger.info('Form unpublished successfully')
+
       alert('フォームを下書きに戻しました。エンドユーザーには表示されなくなります。')
+
+      logger.info('Reloading form data')
       await loadData()
       if (selectedFormId) {
         await loadFormWithBlocks(selectedFormId)
       }
+
+      logger.functionEnd('handleUnpublishForm', 'Success')
     } catch (err) {
-      console.error('Failed to unpublish form:', err)
+      logger.apiError('PATCH', `forms/${selectedForm.id}/unpublish`, err)
       const errorMsg = getErrorMessage(err)
       alert(`下書きに戻すのに失敗しました: ${errorMsg}\n\n詳細はコンソールログを確認してください。`)
+      logger.functionEnd('handleUnpublishForm', 'Failed')
     }
   }
 
