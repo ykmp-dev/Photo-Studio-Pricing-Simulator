@@ -30,9 +30,9 @@ export interface ChoiceOption {
 
 // Condition for conditional block display
 export interface ShowCondition {
-  type: 'yes_no' | 'choice'
+  type: 'yes_no' | 'choice' | 'next'
   block_id: number
-  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value
+  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value, next: 'next'
 }
 
 export interface FormBlock {

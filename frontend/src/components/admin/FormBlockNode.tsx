@@ -22,6 +22,7 @@ const blockStyles = {
 function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
   const { block } = data
   const style = blockStyles[block.block_type]
+  const isRoot = !block.show_condition  // ルートブロック判定
 
   // ブロックタイプのラベル
   const typeLabels: Record<typeof block.block_type, string> = {
@@ -35,7 +36,7 @@ function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
 
   return (
     <div
-      className={`px-3 py-2 shadow-md rounded-lg border-2 ${style.color} ${style.border} min-w-[160px] max-w-[220px]`}
+      className={`px-3 py-2 shadow-md rounded-lg border-2 ${isRoot ? 'border-indigo-500 ring-2 ring-indigo-200' : style.border} ${style.color} min-w-[160px] max-w-[220px] relative`}
       onContextMenu={(e) => {
         if (data.onCopy) {
           e.preventDefault()
@@ -44,6 +45,12 @@ function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
       }}
       title="右クリックでコピー"
     >
+      {/* ルートブロックのバッジ */}
+      {isRoot && (
+        <div className="absolute -top-2 -left-2 bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+          START
+        </div>
+      )}
       {/* 入力ハンドル（左側） - すべてのブロックに追加 */}
       <Handle
         type="target"

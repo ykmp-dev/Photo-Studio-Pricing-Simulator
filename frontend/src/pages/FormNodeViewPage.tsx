@@ -29,6 +29,20 @@ export default function FormNodeViewPage() {
     loadFormAndCategories()
   }, [formId])
 
+  // 未保存の変更がある場合、ページ離脱時に警告
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+        return ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
+
   const loadFormAndCategories = async () => {
     logger.functionStart('loadFormAndCategories', { formId })
 
