@@ -636,7 +636,7 @@ export default function FormManager({ shopId }: FormManagerProps) {
                     onClick={handlePublishToCustomers}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                   >
-                    🔄 お客様ページに反映
+                    更新
                   </button>
                   <button
                     onClick={async () => {
