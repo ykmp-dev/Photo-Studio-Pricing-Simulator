@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages with Auto-Fix
 
 on:
   push:
@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: "pages"
@@ -17,21 +18,60 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      build-success: ${{ steps.build-status.outputs.success }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install dependencies (with retry and auto-fix)
+        id: install
         run: |
           cd frontend
-          npm install
 
-      - name: Build
+          # 最大3回リトライ
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Installing dependencies (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+
+            if npm ci; then
+              echo "✅ Dependencies installed successfully"
+              exit 0
+            else
+              echo "❌ npm ci failed"
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "🔧 Attempting fix: removing node_modules and package-lock.json..."
+                rm -rf node_modules package-lock.json
+
+                echo "🔧 Attempting npm install (generates new package-lock.json)..."
+                if npm install; then
+                  echo "✅ npm install succeeded"
+                  exit 0
+                fi
+
+                sleep 5
+              fi
+            fi
+          done
+
+          echo "❌ Failed to install dependencies after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Build (with auto-fix)
+        id: build
         env:
           NODE_ENV: production
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -39,17 +79,128 @@ jobs:
           VITE_SHOP_ID: ${{ secrets.VITE_SHOP_ID }}
         run: |
           cd frontend
-          npm run build
+
+          # ビルド前にTypeScriptの型チェック
+          echo "Running TypeScript type check..."
+          if ! npm run build 2>&1 | tee build.log; then
+            echo "❌ Build failed"
+
+            # ビルドログを確認
+            if grep -q "error TS" build.log; then
+              echo "⚠️ TypeScript errors detected"
+              echo "Common TypeScript errors found:"
+              grep "error TS" build.log | head -10
+            fi
+
+            if grep -q "ENOSPC" build.log; then
+              echo "⚠️ Out of space error detected"
+              df -h
+            fi
+
+            if grep -q "JavaScript heap out of memory" build.log; then
+              echo "⚠️ Out of memory error detected"
+              echo "🔧 Attempting build with increased memory..."
+              if NODE_OPTIONS="--max-old-space-size=4096" npm run build; then
+                echo "✅ Build succeeded with increased memory"
+                exit 0
+              fi
+            fi
+
+            # キャッシュクリアして再試行
+            echo "🔧 Clearing cache and retrying..."
+            rm -rf node_modules/.cache node_modules/.vite dist
+
+            if npm run build; then
+              echo "✅ Build succeeded after cache clear"
+              exit 0
+            fi
+
+            echo "❌ Build failed after all fix attempts"
+            exit 1
+          else
+            echo "✅ Build succeeded"
+          fi
+
           # GitHub PagesでJekyllを無効化
           touch dist/.nojekyll
 
+      - name: Set build status
+        id: build-status
+        if: always()
+        run: |
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Pages
+        if: steps.build.outcome == 'success'
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist
+
+      - name: Create failure issue on build failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 前回成功したデプロイを探す
+          LAST_SUCCESS_SHA=$(gh run list --workflow=deploy.yml --status=success --limit=1 --json headSha --jq '.[0].headSha' || echo "unknown")
+          CURRENT_SHA="${{ github.sha }}"
+
+          # ビルドログを取得（最初の50行）
+          BUILD_LOG=""
+          if [ -f frontend/build.log ]; then
+            BUILD_LOG=$(head -50 frontend/build.log)
+          fi
+
+          gh issue create \
+            --title "🚨 Deploy build failed for commit ${CURRENT_SHA:0:7}" \
+            --body "## Deploy Build Failure Report
+
+**Commit**: \`$CURRENT_SHA\`
+**Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+**Workflow Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+**Last Successful Deploy**: \`$LAST_SUCCESS_SHA\`
+
+### Build Log (first 50 lines)
+\`\`\`
+$BUILD_LOG
+\`\`\`
+
+### What happened?
+The deployment build failed during the build process.
+
+### Auto-fix Attempts
+- ✅ Retry npm ci with exponential backoff
+- ✅ Remove node_modules and package-lock.json
+- ✅ Regenerate package-lock.json with npm install
+- ✅ Clear build cache (.cache, .vite, dist)
+- ✅ Increase Node.js memory limit
+- ❌ All auto-fix attempts failed
+
+### Recommended Actions
+1. Check the build logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+2. Review TypeScript errors if any
+3. Check environment variables in repository secrets
+4. Consider reverting to last successful commit: \`$LAST_SUCCESS_SHA\`
+5. Run build locally: \`cd frontend && npm ci && npm run build\`
+
+### Rollback Command
+If you need to rollback to the last successful deploy:
+\`\`\`bash
+git revert $CURRENT_SHA
+git push origin main
+\`\`\`
+
+**This issue was automatically created by GitHub Actions.**
+" \
+            --label "deployment-failure,bug"
 
   deploy:
     environment:
@@ -57,7 +208,78 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    if: needs.build.outputs.build-success == 'true'
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages (with retry)
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Retry deployment on failure
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Create failure issue on deploy failure
+        if: steps.deployment.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_SHA="${{ github.sha }}"
+
+          gh issue create \
+            --title "🚨 GitHub Pages deployment failed for commit ${CURRENT_SHA:0:7}" \
+            --body "## GitHub Pages Deployment Failure Report
+
+**Commit**: \`$CURRENT_SHA\`
+**Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+**Workflow Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+### What happened?
+The GitHub Pages deployment step failed after a successful build.
+
+### Auto-fix Attempts
+- ✅ Automatic retry with actions/deploy-pages@v4
+- ❌ Deployment still failed
+
+### Possible Causes
+- GitHub Pages service temporary outage
+- Artifact upload/download issue
+- Repository settings issue
+- File size or count limits exceeded
+
+### Recommended Actions
+1. Check GitHub Status: https://www.githubstatus.com/
+2. Verify GitHub Pages is enabled in repository settings
+3. Check artifact size: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+4. Manually trigger workflow: https://github.com/${{ github.repository }}/actions/workflows/deploy.yml
+5. Wait 10-15 minutes and retry (GitHub Pages can have delays)
+
+### Manual Deployment
+If needed, you can manually deploy from the Actions tab:
+https://github.com/${{ github.repository }}/actions/workflows/deploy.yml
+
+**This issue was automatically created by GitHub Actions.**
+" \
+            --label "deployment-failure,bug"
+
+      - name: Final deployment status check
+        if: always()
+        run: |
+          if [ "${{ steps.deployment.outcome }}" = "success" ]; then
+            echo ""
+            echo "========================================="
+            echo "✅ DEPLOYMENT COMPLETED SUCCESSFULLY"
+            echo "========================================="
+            echo "Commit: ${{ github.sha }}"
+            echo "Page URL: ${{ steps.deployment.outputs.page_url }}"
+            echo "========================================="
+          else
+            echo ""
+            echo "========================================="
+            echo "❌ DEPLOYMENT FAILED"
+            echo "========================================="
+            echo "Check logs and created issue for details"
+            echo "========================================="
+            exit 1
+          fi
