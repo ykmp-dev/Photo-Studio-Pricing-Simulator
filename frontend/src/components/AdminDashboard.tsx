@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
-import FormManager from './admin/FormManager'
+import FormListPage from '../pages/FormListPage'
 import CSVManager from './admin/CSVManager'
 
 type Tab = 'categories' | 'campaigns' | 'forms' | 'csv'
@@ -91,7 +91,7 @@ export default function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'categories' && <CategoryManager shopId={shopId} />}
         {activeTab === 'campaigns' && <CampaignManager shopId={shopId} />}
-        {activeTab === 'forms' && <FormManager shopId={shopId} />}
+        {activeTab === 'forms' && <FormListPage shopId={shopId} />}
         {activeTab === 'csv' && <CSVManager />}
       </main>
     </div>

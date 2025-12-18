@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import SimulatorPage from './pages/SimulatorPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
-import FormNodeViewPage from './pages/FormNodeViewPage'
+import FormBlockEditorPage from './pages/FormBlockEditorPage'
 import { AuthProvider } from './contexts/AuthContext'
 
 // GitHub PagesのSPAルーティング対応：404.htmlからのリダイレクトを処理
@@ -36,7 +36,7 @@ function App() {
           <Route path="/" element={<SimulatorPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/forms/:formId/node-view" element={<FormNodeViewPage />} />
+          <Route path="/admin/forms/:formId/edit" element={<FormBlockEditorPage />} />
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Router>
