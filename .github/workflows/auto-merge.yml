@@ -9,6 +9,9 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: read
+  checks: read
+  statuses: read
 
 jobs:
   auto-merge:
@@ -27,6 +30,7 @@ jobs:
       - name: Create Pull Request and Auto Merge with Auto-Fix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # GitHub CLIの確認
           echo "Checking GitHub CLI..."
@@ -36,6 +40,16 @@ jobs:
           fi
           echo "✅ GitHub CLI version:"
           gh --version
+          echo ""
+
+          # 認証状態を確認
+          echo "Checking GitHub CLI authentication..."
+          if gh auth status; then
+            echo "✅ GitHub CLI is authenticated"
+          else
+            echo "❌ GitHub CLI authentication failed"
+            exit 1
+          fi
           echo ""
 
           # リトライ関数（指数バックオフ付き）
