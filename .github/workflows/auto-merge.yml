@@ -28,6 +28,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # GitHub CLIの確認
+          echo "Checking GitHub CLI..."
+          if ! command -v gh &> /dev/null; then
+            echo "❌ GitHub CLI not found"
+            exit 1
+          fi
+          echo "✅ GitHub CLI version:"
+          gh --version
+          echo ""
+
           # リトライ関数（指数バックオフ付き）
           retry_command() {
             local max_retries=4
@@ -42,12 +52,16 @@ jobs:
                 retry_delay=$((retry_delay * 2))
               fi
 
-              "$@" && return 0
+              if "$@"; then
+                echo "✅ Command succeeded (attempt $((attempt + 1)))"
+                return 0
+              fi
               exit_code=$?
+              echo "⚠️ Command failed with exit code $exit_code (attempt $((attempt + 1))/$((max_retries + 1)))"
               attempt=$((attempt + 1))
             done
 
-            echo "❌ Command failed after $((max_retries + 1)) attempts"
+            echo "❌ Command failed after $((max_retries + 1)) attempts (final exit code: $exit_code)"
             return $exit_code
           }
 
@@ -174,13 +188,13 @@ The auto-merge workflow failed to merge this branch into main.
 
           # 既存のPRをチェック（リトライ付き）
           echo "Checking for existing PRs..."
-          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' || echo "")
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' 2>/dev/null || echo "")
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR #$EXISTING_PR already exists"
+          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+            echo "✅ PR #$EXISTING_PR already exists"
             PR_NUMBER=$EXISTING_PR
           else
-            echo "Creating new PR..."
+            echo "No existing PR found. Creating new PR..."
 
             # PR作成前にmainとの差分をチェック
             git fetch origin main
@@ -214,22 +228,51 @@ The auto-merge workflow failed to merge this branch into main.
 
 **このPRは自動的に作成されました。問題がある場合は手動で確認してください。**"
 
-            PR_URL=$(retry_command gh pr create \
+            echo "Attempting to create PR..."
+            echo "  Title: Auto-merge: $BRANCH_NAME"
+            echo "  Base: main"
+            echo "  Head: $BRANCH_NAME"
+
+            # PR作成（エラー出力をキャプチャ）
+            PR_CREATE_OUTPUT=$(gh pr create \
               --title "Auto-merge: $BRANCH_NAME" \
               --body "$PR_BODY" \
               --base main \
-              --head "$BRANCH_NAME" || echo "")
+              --head "$BRANCH_NAME" 2>&1)
+            PR_CREATE_STATUS=$?
+
+            if [ $PR_CREATE_STATUS -eq 0 ]; then
+              PR_URL="$PR_CREATE_OUTPUT"
+              echo "✅ PR created successfully: $PR_URL"
+            else
+              echo "❌ PR creation failed with exit code $PR_CREATE_STATUS"
+              echo "Error output:"
+              echo "$PR_CREATE_OUTPUT"
+              PR_URL=""
+            fi
 
             if [ -z "$PR_URL" ]; then
               echo "❌ Failed to create PR"
-              ERROR_MSG="Failed to create PR for branch $BRANCH_NAME"
+              ERROR_MSG="Failed to create PR for branch $BRANCH_NAME. Output: $PR_CREATE_OUTPUT"
               create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
               exit 1
             fi
 
-            PR_NUMBER=$(echo $PR_URL | grep -oP '\d+$')
+            # PR番号を抽出（URLの最後の数字）
+            PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$' || echo "")
+            if [ -z "$PR_NUMBER" ]; then
+              echo "⚠️ Could not extract PR number from URL: $PR_URL"
+              # ghコマンドでPR番号を取得
+              PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' 2>/dev/null || echo "")
+              if [ -z "$PR_NUMBER" ]; then
+                echo "❌ Failed to extract PR number"
+                exit 1
+              fi
+            fi
             echo "Created PR #$PR_NUMBER: $PR_URL"
           fi
+
+          echo "Working with PR #$PR_NUMBER"
 
           # PRがマージ可能か確認（リトライロジック付き）
           echo "Checking if PR #$PR_NUMBER is mergeable..."
