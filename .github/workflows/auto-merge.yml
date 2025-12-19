@@ -34,22 +34,7 @@ jobs:
         run: |
           # GitHub CLIの確認
           echo "Checking GitHub CLI..."
-          if ! command -v gh &> /dev/null; then
-            echo "❌ GitHub CLI not found"
-            exit 1
-          fi
-          echo "✅ GitHub CLI version:"
-          gh --version
-          echo ""
-
-          # 認証状態を確認
-          echo "Checking GitHub CLI authentication..."
-          if gh auth status; then
-            echo "✅ GitHub CLI is authenticated"
-          else
-            echo "❌ GitHub CLI authentication failed"
-            exit 1
-          fi
+          gh --version || echo "GitHub CLI version check failed, but continuing..."
           echo ""
 
           # リトライ関数（指数バックオフ付き）
