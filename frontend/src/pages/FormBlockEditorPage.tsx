@@ -12,7 +12,6 @@ import {
 import { getProductCategories, getItems } from '../services/categoryService'
 import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition, ChoiceOption } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
-import FormBuilderTree from '../components/admin/FormBuilderTree'
 import { getErrorMessage, getSuccessMessage } from '../utils/errorMessages'
 import { createLogger } from '../utils/logger'
 
