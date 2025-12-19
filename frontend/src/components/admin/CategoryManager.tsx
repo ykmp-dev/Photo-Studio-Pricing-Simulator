@@ -57,6 +57,11 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
 
+  // v3フォーム値
+  const [formSection, setFormSection] = useState<'trigger' | 'conditional' | 'common_final' | ''>('')
+  const [formProductType, setFormProductType] = useState<'plan' | 'option_single' | 'option_multi' | ''>('')
+  const [formConditionalRule, setFormConditionalRule] = useState('')
+
   // 変更通知
   useEffect(() => {
     onHasChanges?.(hasChanges)
@@ -144,6 +149,18 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
 
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // conditional_ruleのJSON検証
+    let parsedRule = null
+    if (formConditionalRule.trim()) {
+      try {
+        parsedRule = JSON.parse(formConditionalRule)
+      } catch (err) {
+        alert('条件ルールのJSON形式が正しくありません')
+        return
+      }
+    }
+
     const newId = -Math.floor(Math.random() * 1000000)
     const now = new Date().toISOString()
     const newCategory: ProductCategory = {
@@ -156,6 +173,11 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
       is_active: true,
       created_at: now,
       updated_at: now,
+
+      // v3フィールド
+      form_section: formSection || null,
+      product_type: formProductType || null,
+      conditional_rule: parsedRule,
     }
     setDraftProduct([...draftProduct, newCategory])
     setHasChanges(true)
@@ -208,6 +230,17 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   }
 
   const handleUpdateProduct = (id: number) => {
+    // conditional_ruleのJSON検証
+    let parsedRule = null
+    if (formConditionalRule.trim()) {
+      try {
+        parsedRule = JSON.parse(formConditionalRule)
+      } catch (err) {
+        alert('条件ルールのJSON形式が正しくありません')
+        return
+      }
+    }
+
     setDraftProduct(
       draftProduct.map((cat) =>
         cat.id === id
@@ -217,6 +250,11 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
               display_name: formDisplayName,
               description: formDescription || null,
               updated_at: new Date().toISOString(),
+
+              // v3フィールド
+              form_section: formSection || null,
+              product_type: formProductType || null,
+              conditional_rule: parsedRule,
             }
           : cat
       )
@@ -271,6 +309,11 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
+
+    // v3フィールドリセット
+    setFormSection('')
+    setFormProductType('')
+    setFormConditionalRule('')
   }
 
   const startEditShooting = (category: ShootingCategory) => {
@@ -285,6 +328,13 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDisplayName(category.display_name)
     setFormDescription(category.description || '')
     setEditingProductId(category.id)
+
+    // v3フィールド
+    setFormSection(category.form_section || '')
+    setFormProductType(category.product_type || '')
+    setFormConditionalRule(
+      category.conditional_rule ? JSON.stringify(category.conditional_rule, null, 2) : ''
+    )
   }
 
   const startEditItem = (item: DraftItem) => {
@@ -634,6 +684,67 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   rows={3}
                 />
               </div>
+
+              {/* v3フィールド */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">v3フォーム設定（オプショナル）</h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">フォームセクション</label>
+                    <select
+                      value={formSection}
+                      onChange={(e) => setFormSection(e.target.value as any)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    >
+                      <option value="">-- なし --</option>
+                      <option value="trigger">trigger（常に表示）</option>
+                      <option value="conditional">conditional（条件付き表示）</option>
+                      <option value="common_final">common_final（常に表示・最後）</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      trigger: 常に表示（コース選択など）<br/>
+                      conditional: 条件ルールに基づいて表示<br/>
+                      common_final: 常に表示（追加オプション）
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">商品タイプ</label>
+                    <select
+                      value={formProductType}
+                      onChange={(e) => setFormProductType(e.target.value as any)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    >
+                      <option value="">-- なし --</option>
+                      <option value="plan">plan（ラジオボタン・単一選択）</option>
+                      <option value="option_single">option_single（プルダウン・単一選択）</option>
+                      <option value="option_multi">option_multi（チェックボックス・複数選択）</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      UIコンポーネントの種類を指定
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      条件ルール（JSON）
+                      {formSection === 'conditional' && <span className="text-orange-500 ml-1">※conditionalの場合は設定推奨</span>}
+                    </label>
+                    <textarea
+                      value={formConditionalRule}
+                      onChange={(e) => setFormConditionalRule(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                      rows={6}
+                      placeholder={'{\n  "AND": [\n    {"field": "plan_type", "operator": "=", "value": "studio"}\n  ]\n}'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      AND/OR対応のJSON形式で条件を記述
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 {editingProductId ? (
                   <>
