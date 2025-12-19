@@ -665,59 +665,196 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
 
               {/* v3フィールド */}
               <div className="border-t pt-4 mt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">v3フォーム設定（オプショナル）</h4>
+                <h4 className="text-base font-bold text-gray-800 mb-4">📋 お客様画面での表示設定</h4>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">フォームセクション</label>
-                    <select
-                      value={formSection}
-                      onChange={(e) => setFormSection(e.target.value as any)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    >
-                      <option value="">-- なし --</option>
-                      <option value="trigger">trigger（常に表示）</option>
-                      <option value="conditional">conditional（条件付き表示）</option>
-                      <option value="common_final">common_final（常に表示・最後）</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      trigger: 常に表示（コース選択など）<br/>
-                      conditional: 条件ルールに基づいて表示<br/>
-                      common_final: 常に表示（追加オプション）
-                    </p>
+                <div className="space-y-4">
+                  {/* 表示タイミング */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      ① いつ表示しますか？
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                        style={{ borderColor: formSection === 'trigger' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'trigger' ? '#eff6ff' : 'transparent' }}>
+                        <input
+                          type="radio"
+                          value="trigger"
+                          checked={formSection === 'trigger'}
+                          onChange={(e) => setFormSection(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">最初に表示（必ず選択）</div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            例: 撮影コース、撮影場所など、お客様が最初に選ぶ項目
+                          </div>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                        style={{ borderColor: formSection === 'conditional' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'conditional' ? '#eff6ff' : 'transparent' }}>
+                        <input
+                          type="radio"
+                          value="conditional"
+                          checked={formSection === 'conditional'}
+                          onChange={(e) => setFormSection(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">条件によって表示</div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            例: スタジオ撮影を選んだ時だけ表示するヘアメイク
+                          </div>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                        style={{ borderColor: formSection === 'common_final' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'common_final' ? '#eff6ff' : 'transparent' }}>
+                        <input
+                          type="radio"
+                          value="common_final"
+                          checked={formSection === 'common_final'}
+                          onChange={(e) => setFormSection(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">最後に表示（追加オプション）</div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            例: データ納品、アルバム追加など、どのコースでも選べる追加オプション
+                          </div>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                        style={{ borderColor: formSection === '' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === '' ? '#eff6ff' : 'transparent' }}>
+                        <input
+                          type="radio"
+                          value=""
+                          checked={formSection === ''}
+                          onChange={(e) => setFormSection(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">フォームに表示しない</div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            内部管理用など、お客様画面には表示しない
+                          </div>
+                        </div>
+                      </label>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">商品タイプ</label>
-                    <select
-                      value={formProductType}
-                      onChange={(e) => setFormProductType(e.target.value as any)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    >
-                      <option value="">-- なし --</option>
-                      <option value="plan">plan（ラジオボタン・単一選択）</option>
-                      <option value="option_single">option_single（プルダウン・単一選択）</option>
-                      <option value="option_multi">option_multi（チェックボックス・複数選択）</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      UIコンポーネントの種類を指定
-                    </p>
-                  </div>
+                  {/* 選択方法 */}
+                  {formSection && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <label className="block text-sm font-semibold text-gray-800 mb-2">
+                        ② お客様はどう選びますか？
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                          style={{ borderColor: formProductType === 'plan' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'plan' ? '#f0fdf4' : 'transparent' }}>
+                          <input
+                            type="radio"
+                            value="plan"
+                            checked={formProductType === 'plan'}
+                            onChange={(e) => setFormProductType(e.target.value as any)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">◉ 1つだけ選ぶ（丸ボタン）</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              コース選択など、複数の選択肢から1つだけ選ぶ場合
+                            </div>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                          style={{ borderColor: formProductType === 'option_single' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'option_single' ? '#f0fdf4' : 'transparent' }}>
+                          <input
+                            type="radio"
+                            value="option_single"
+                            checked={formProductType === 'option_single'}
+                            onChange={(e) => setFormProductType(e.target.value as any)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">▼ 1つだけ選ぶ（プルダウン）</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              選択肢が多い場合、省スペースで表示
+                            </div>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                          style={{ borderColor: formProductType === 'option_multi' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'option_multi' ? '#f0fdf4' : 'transparent' }}>
+                          <input
+                            type="radio"
+                            value="option_multi"
+                            checked={formProductType === 'option_multi'}
+                            onChange={(e) => setFormProductType(e.target.value as any)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">☑ 複数選べる（チェックボックス）</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              衣装追加、データ納品など、複数選択可能な追加オプション
+                            </div>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
+                          style={{ borderColor: formProductType === '' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === '' ? '#f0fdf4' : 'transparent' }}>
+                          <input
+                            type="radio"
+                            value=""
+                            checked={formProductType === ''}
+                            onChange={(e) => setFormProductType(e.target.value as any)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">選択不要</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              表示のみ、または別の方法で選択
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  )}
 
-                  <div>
-                    <ConditionalRuleBuilder
-                      value={formConditionalRule}
-                      onChange={setFormConditionalRule}
-                      availableFields={
-                        draftProduct
-                          .filter((cat) => cat.form_section === 'trigger')
-                          .map((cat) => ({
-                            value: `category_${cat.id}`,
-                            label: `${cat.display_name} (category_${cat.id})`
-                          }))
-                      }
-                    />
-                  </div>
+                  {/* 条件設定（conditionalの場合のみ） */}
+                  {formSection === 'conditional' && (
+                    <div>
+                      <ConditionalRuleBuilder
+                        value={formConditionalRule}
+                        onChange={setFormConditionalRule}
+                        availableFields={
+                          draftProduct
+                            .filter((cat) => cat.form_section === 'trigger')
+                            .map((cat) => ({
+                              value: `category_${cat.id}`,
+                              label: cat.display_name
+                            }))
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {/* プレビュー */}
+                  {formSection && formProductType && (
+                    <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <div className="text-blue-600 text-xl">👁️</div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-blue-900 mb-1">お客様画面のイメージ</div>
+                          <div className="text-sm text-blue-800">
+                            {formProductType === 'plan' && '◉ 丸ボタンで1つだけ選択できます'}
+                            {formProductType === 'option_single' && '▼ プルダウンで1つだけ選択できます'}
+                            {formProductType === 'option_multi' && '☑ チェックボックスで複数選択できます'}
+                          </div>
+                          <div className="text-xs text-blue-700 mt-2">
+                            {formSection === 'trigger' && '※ 画面を開くと最初に表示されます'}
+                            {formSection === 'conditional' && '※ 設定した条件に該当する場合のみ表示されます'}
+                            {formSection === 'common_final' && '※ 他の選択の後、最後に表示されます'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
