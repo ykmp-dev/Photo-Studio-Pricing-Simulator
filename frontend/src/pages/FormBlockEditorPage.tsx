@@ -219,22 +219,6 @@ export default function FormBlockEditorPage() {
       return
     }
 
-    // show_conditionのバリデーション：参照先のblock_idが存在するか確認
-    const blockIds = new Set(localBlocks.map(b => b.id))
-    const invalidReferences = localBlocks.filter(block => {
-      if (block.show_condition && block.show_condition.block_id) {
-        return !blockIds.has(block.show_condition.block_id)
-      }
-      return false
-    })
-
-    if (invalidReferences.length > 0) {
-      logger.validationError('show_condition', 'Invalid block_id references found', invalidReferences)
-      const invalidBlocks = invalidReferences.map(b => `「${b.content || 'ブロック'}」(ID: ${b.id})`).join(', ')
-      alert(`エラー: 以下のブロックが存在しないブロックを参照しています:\n${invalidBlocks}\n\n【対処法】\n1. ブロックを削除して再度作成してください\n2. または、ページをリロードして最新の状態に戻してください`)
-      return
-    }
-
     logger.info('Starting save process', {
       formId: form.id,
       formName: form.name,
