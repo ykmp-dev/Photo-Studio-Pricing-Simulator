@@ -4,6 +4,7 @@ import SimulatorPage from './pages/SimulatorPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
 import FormBlockEditorPage from './pages/FormBlockEditorPage'
+import CustomerFormPageV3 from './pages/CustomerFormPageV3'
 import { AuthProvider } from './contexts/AuthContext'
 
 // GitHub PagesのSPAルーティング対応：404.htmlからのリダイレクトを処理
@@ -35,6 +36,7 @@ function App() {
         <Routes>
           <Route path="/" element={<SimulatorPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
+          <Route path="/form/v3/:shopId" element={<CustomerFormPageV3 />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/forms/:formId/edit" element={<FormBlockEditorPage />} />
           <Route path="/login" element={<LoginPage />} />
