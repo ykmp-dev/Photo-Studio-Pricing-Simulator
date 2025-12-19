@@ -159,8 +159,8 @@ export default function FormBlockEditorPage() {
     logger.info('Block deleted from local state', { blockId, remainingBlocks: localBlocks.length - 1 })
   }
 
-  // ローカルステートに追加（DBには保存しない）
-  const handleBlockAdd = (blockType: BlockType) => {
+  // ローカルステートに追加し、すぐにDBに保存してIDを取得
+  const handleBlockAdd = async (blockType: BlockType) => {
     logger.userAction('Block add', { blockType })
 
     if (!form) {
@@ -168,28 +168,31 @@ export default function FormBlockEditorPage() {
       return
     }
 
-    const newBlock: FormBlock = {
-      id: Date.now(), // 一時ID（保存時にサーバーが割り当て）
-      form_schema_id: form.id,
-      block_type: blockType,
-      content: null,
-      sort_order: localBlocks.length,
-      metadata: {},
-      show_condition: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    try {
+      // 新しいブロックをデータベースに直接作成してIDを取得
+      logger.apiRequest('POST', 'form_blocks')
+      const newBlock = await createFormBlock(form.id, {
+        block_type: blockType,
+        content: null,
+        sort_order: localBlocks.length,
+        metadata: {},
+        show_condition: null,
+      })
+
+      logger.apiResponse('POST', 'form_blocks', { blockId: newBlock.id })
+      logger.info('New block created with database ID', {
+        blockType,
+        blockId: newBlock.id,
+        sortOrder: newBlock.sort_order
+      })
+
+      setLocalBlocks(prev => [...prev, newBlock])
+      setHasChanges(false) // すでにDBに保存済み
+      logger.info('Block added to local state', { totalBlocks: localBlocks.length + 1 })
+    } catch (err) {
+      logger.apiError('POST', 'form_blocks', err)
+      alert('ブロックの追加に失敗しました')
     }
-
-    logger.info('Adding new block to local state', {
-      blockType,
-      tempId: newBlock.id,
-      sortOrder: newBlock.sort_order
-    })
-
-    setLocalBlocks(prev => [...prev, newBlock])
-    setHasChanges(true)
-    logger.stateChange('hasChanges', false, true)
-    logger.info('Block added to local state', { totalBlocks: localBlocks.length + 1 })
   }
 
   const handleBlocksReorder = (blocks: FormBlock[]) => {
@@ -213,6 +216,22 @@ export default function FormBlockEditorPage() {
     if (localBlocks.length === 0) {
       logger.validationError('localBlocks', 'No blocks to save', localBlocks.length)
       alert('保存するブロックがありません。少なくとも1つのブロックを追加してください。')
+      return
+    }
+
+    // show_conditionのバリデーション：参照先のblock_idが存在するか確認
+    const blockIds = new Set(localBlocks.map(b => b.id))
+    const invalidReferences = localBlocks.filter(block => {
+      if (block.show_condition && block.show_condition.block_id) {
+        return !blockIds.has(block.show_condition.block_id)
+      }
+      return false
+    })
+
+    if (invalidReferences.length > 0) {
+      logger.validationError('show_condition', 'Invalid block_id references found', invalidReferences)
+      const invalidBlocks = invalidReferences.map(b => `「${b.content || 'ブロック'}」(ID: ${b.id})`).join(', ')
+      alert(`エラー: 以下のブロックが存在しないブロックを参照しています:\n${invalidBlocks}\n\n【対処法】\n1. ブロックを削除して再度作成してください\n2. または、ページをリロードして最新の状態に戻してください`)
       return
     }
 
@@ -520,7 +539,7 @@ export default function FormBlockEditorPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin#form-builder')}
                 className="text-gray-600 hover:text-gray-800 font-medium transition-colors"
               >
                 ← 一覧に戻る
