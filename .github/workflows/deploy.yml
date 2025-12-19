@@ -135,12 +135,13 @@ jobs:
           fi
 
       - name: Setup Pages (with retry)
+        id: setup-pages
         if: steps.build.outcome == 'success'
         continue-on-error: true
         uses: actions/configure-pages@v4
 
       - name: Retry Setup Pages on failure
-        if: steps.build.outcome == 'success' && failure()
+        if: steps.build.outcome == 'success' && steps.setup-pages.outcome == 'failure'
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
