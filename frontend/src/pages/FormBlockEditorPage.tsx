@@ -153,7 +153,24 @@ export default function FormBlockEditorPage() {
       blockType: blockToDelete?.block_type,
       content: blockToDelete?.content
     })
-    setLocalBlocks(prevBlocks => prevBlocks.filter(block => block.id !== blockId))
+
+    // 削除されたブロックを参照しているshow_conditionをクリーンアップ
+    setLocalBlocks(prevBlocks => {
+      return prevBlocks
+        .filter(block => block.id !== blockId)  // 削除対象のブロックを除外
+        .map(block => {
+          // このブロックが削除されたブロックを参照していたらクリア
+          if (block.show_condition?.block_id === blockId) {
+            logger.info('Clearing show_condition reference', {
+              blockId: block.id,
+              referencedDeletedBlock: blockId
+            })
+            return { ...block, show_condition: null }
+          }
+          return block
+        })
+    })
+
     setHasChanges(true)
     logger.stateChange('hasChanges', false, true)
     logger.info('Block deleted from local state', { blockId, remainingBlocks: localBlocks.length - 1 })
