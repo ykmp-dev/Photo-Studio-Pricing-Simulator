@@ -1,4 +1,4 @@
-name: Auto PR and Merge with Auto-Fix
+name: Auto PR and Merge
 
 on:
   push:
@@ -8,10 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
-  actions: read
-  checks: read
-  statuses: read
 
 jobs:
   auto-merge:
@@ -22,21 +18,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create Pull Request and Auto Merge with Auto-Fix
+      - name: Create Pull Request and Auto Merge
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # GitHub CLIの確認
-          echo "Checking GitHub CLI..."
-          gh --version || echo "GitHub CLI version check failed, but continuing..."
-          echo ""
-
           # リトライ関数（指数バックオフ付き）
           retry_command() {
             local max_retries=4
@@ -51,227 +36,37 @@ jobs:
                 retry_delay=$((retry_delay * 2))
               fi
 
-              if "$@"; then
-                echo "✅ Command succeeded (attempt $((attempt + 1)))"
-                return 0
-              fi
+              "$@" && return 0
               exit_code=$?
-              echo "⚠️ Command failed with exit code $exit_code (attempt $((attempt + 1))/$((max_retries + 1)))"
               attempt=$((attempt + 1))
             done
 
-            echo "❌ Command failed after $((max_retries + 1)) attempts (final exit code: $exit_code)"
+            echo "❌ Command failed after $((max_retries + 1)) attempts"
             return $exit_code
-          }
-
-          # 自動修復関数
-          auto_fix_branch() {
-            local branch_name=$1
-            echo "🔧 Attempting auto-fix for branch: $branch_name"
-
-            # mainブランチの最新を取得
-            git fetch origin main
-
-            # 現在のブランチをチェックアウト
-            git checkout "$branch_name"
-
-            # mainブランチをrebaseで統合を試みる
-            echo "Attempting to rebase onto main..."
-            if git rebase origin/main; then
-              echo "✅ Rebase successful!"
-
-              # 強制プッシュ（rebase後は必要）
-              if git push --force-with-lease origin "$branch_name"; then
-                echo "✅ Force-pushed rebased branch"
-                return 0
-              else
-                echo "❌ Failed to push rebased branch"
-                return 1
-              fi
-            else
-              echo "⚠️ Rebase failed, attempting merge strategy..."
-              git rebase --abort
-
-              # rebaseが失敗した場合、mergeを試みる
-              if git merge origin/main -m "Auto-merge: Merge main into $branch_name"; then
-                echo "✅ Merge successful!"
-
-                if git push origin "$branch_name"; then
-                  echo "✅ Pushed merged branch"
-                  return 0
-                else
-                  echo "❌ Failed to push merged branch"
-                  return 1
-                fi
-              else
-                echo "❌ Merge also failed"
-
-                # コンフリクトがある場合、自動解決を試みる（ours戦略）
-                echo "⚠️ Attempting conflict resolution with 'ours' strategy..."
-                git merge --abort
-
-                if git merge -X ours origin/main -m "Auto-merge: Resolve conflicts with ours strategy"; then
-                  echo "✅ Conflicts resolved with 'ours' strategy"
-
-                  if git push origin "$branch_name"; then
-                    echo "✅ Pushed conflict-resolved branch"
-                    return 0
-                  fi
-                fi
-
-                echo "❌ Auto-fix failed"
-                return 1
-              fi
-            fi
-          }
-
-          # issueを作成する関数
-          create_failure_issue() {
-            local branch_name=$1
-            local error_message=$2
-
-            echo "📝 Creating issue for merge failure..."
-
-            gh issue create \
-              --title "🚨 Auto-merge failed for branch: $branch_name" \
-              --body "## Auto-merge Failure Report
-
-**Branch**: \`$branch_name\`
-**Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-**Workflow Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-### Error
-\`\`\`
-$error_message
-\`\`\`
-
-### What happened?
-The auto-merge workflow failed to merge this branch into main.
-
-### Recommended Actions
-1. Check for merge conflicts: \`git checkout $branch_name && git merge main\`
-2. Resolve conflicts manually if needed
-3. Run tests to ensure everything works
-4. Manually merge the PR: https://github.com/${{ github.repository }}/pulls
-
-### Auto-fix Attempts
-- ✅ Retry with exponential backoff
-- ✅ Rebase onto main
-- ✅ Merge with main
-- ✅ Conflict resolution with 'ours' strategy
-- ❌ All auto-fix attempts failed
-
-**This issue was automatically created by GitHub Actions.**
-" \
-              --label "auto-merge-failure,bug"
           }
 
           # ブランチ名を取得
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          echo "========================================="
-          echo "Auto-merge workflow started"
-          echo "========================================="
-          echo "Branch: $BRANCH_NAME"
-          echo "Repository: ${{ github.repository }}"
-          echo "Run ID: ${{ github.run_id }}"
-          echo "========================================="
-
-          # mainブランチの存在を確認
-          echo "Fetching main branch..."
-          if ! git fetch origin main:main 2>/dev/null; then
-            echo "⚠️ Could not fetch main branch, trying alternative method..."
-            git fetch origin main
-          fi
-
-          echo "✅ Main branch fetched successfully"
+          echo "Current branch: $BRANCH_NAME"
 
           # 既存のPRをチェック（リトライ付き）
           echo "Checking for existing PRs..."
-          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' 2>/dev/null || echo "")
+          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
 
-          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
-            echo "✅ PR #$EXISTING_PR already exists"
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists"
             PR_NUMBER=$EXISTING_PR
           else
-            echo "No existing PR found. Creating new PR..."
-
-            # PR作成前にmainとの差分をチェック
-            git fetch origin main
-            COMMITS_BEHIND=$(git rev-list --count HEAD..origin/main)
-
-            if [ "$COMMITS_BEHIND" -gt 0 ]; then
-              echo "⚠️ Branch is $COMMITS_BEHIND commits behind main"
-              echo "Attempting to update branch before creating PR..."
-
-              if ! auto_fix_branch "$BRANCH_NAME"; then
-                echo "❌ Failed to update branch"
-                ERROR_MSG="Branch is behind main and auto-fix failed"
-                create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
-                exit 1
-              fi
-            fi
-
-            PR_BODY="このPRは自動的に作成・マージされます。
-
-**Branch**: \`$BRANCH_NAME\`
-**Changes**: Automated changes from Claude Code session
-
-マージ後、GitHub Pagesに自動デプロイされます。
-
----
-
-### Auto-merge Status
-- ✅ PR created automatically
-- ⏳ Waiting for merge checks
-- 🔄 Will auto-merge when ready
-
-**このPRは自動的に作成されました。問題がある場合は手動で確認してください。**"
-
-            echo "Attempting to create PR..."
-            echo "  Title: Auto-merge: $BRANCH_NAME"
-            echo "  Base: main"
-            echo "  Head: $BRANCH_NAME"
-
-            # PR作成（エラー出力をキャプチャ）
-            PR_CREATE_OUTPUT=$(gh pr create \
+            echo "Creating new PR..."
+            PR_URL=$(retry_command gh pr create \
               --title "Auto-merge: $BRANCH_NAME" \
-              --body "$PR_BODY" \
+              --body "このPRは自動的に作成・マージされます。Claudeセッション ${BRANCH_NAME} からの変更を自動的にマージします。マージ後、GitHub Pagesに自動デプロイされます。" \
               --base main \
-              --head "$BRANCH_NAME" 2>&1)
-            PR_CREATE_STATUS=$?
+              --head "$BRANCH_NAME")
 
-            if [ $PR_CREATE_STATUS -eq 0 ]; then
-              PR_URL="$PR_CREATE_OUTPUT"
-              echo "✅ PR created successfully: $PR_URL"
-            else
-              echo "❌ PR creation failed with exit code $PR_CREATE_STATUS"
-              echo "Error output:"
-              echo "$PR_CREATE_OUTPUT"
-              PR_URL=""
-            fi
-
-            if [ -z "$PR_URL" ]; then
-              echo "❌ Failed to create PR"
-              ERROR_MSG="Failed to create PR for branch $BRANCH_NAME. Output: $PR_CREATE_OUTPUT"
-              create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
-              exit 1
-            fi
-
-            # PR番号を抽出（URLの最後の数字）
-            PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$' || echo "")
-            if [ -z "$PR_NUMBER" ]; then
-              echo "⚠️ Could not extract PR number from URL: $PR_URL"
-              # ghコマンドでPR番号を取得
-              PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' 2>/dev/null || echo "")
-              if [ -z "$PR_NUMBER" ]; then
-                echo "❌ Failed to extract PR number"
-                exit 1
-              fi
-            fi
-            echo "Created PR #$PR_NUMBER: $PR_URL"
+            PR_NUMBER=$(echo $PR_URL | grep -oP '\d+$')
+            echo "Created PR #$PR_NUMBER"
           fi
-
-          echo "Working with PR #$PR_NUMBER"
 
           # PRがマージ可能か確認（リトライロジック付き）
           echo "Checking if PR #$PR_NUMBER is mergeable..."
@@ -287,27 +82,10 @@ The auto-merge workflow failed to merge this branch into main.
               sleep 5
             fi
 
-            MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+            MERGEABLE=$(retry_command gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' || echo "UNKNOWN")
             echo "Mergeable status: $MERGEABLE"
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
-
-          # マージ不可の場合、自動修復を試みる
-          if [ "$MERGEABLE" = "CONFLICTING" ]; then
-            echo "⚠️ PR has conflicts. Attempting auto-fix..."
-
-            if auto_fix_branch "$BRANCH_NAME"; then
-              echo "✅ Auto-fix successful! Rechecking PR status..."
-              sleep 5
-              MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
-              echo "New mergeable status: $MERGEABLE"
-            else
-              echo "❌ Auto-fix failed"
-              ERROR_MSG="PR #$PR_NUMBER has conflicts that could not be auto-resolved"
-              create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
-              exit 1
-            fi
-          fi
 
           # まだUNKNOWNの場合、マージを試みる（失敗したらエラーメッセージが出る）
           if [ "$MERGEABLE" = "UNKNOWN" ]; then
@@ -321,37 +99,12 @@ The auto-merge workflow failed to merge this branch into main.
             echo "  - There are merge conflicts"
             echo "  - Required status checks are not passing"
             echo ""
-
-            # 最後の試み: 強制的に自動修復
-            echo "🔧 Making final auto-fix attempt..."
-            if auto_fix_branch "$BRANCH_NAME"; then
-              echo "✅ Final auto-fix successful!"
-              sleep 5
-            else
-              echo "❌ All auto-fix attempts exhausted"
-              ERROR_MSG="PR #$PR_NUMBER cannot be merged. Status: $MERGEABLE"
-              create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
-              echo "Please check the PR: https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
-              exit 1
-            fi
+            echo "Please check the PR: https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+            exit 1
           fi
 
           # PRをマージ（リトライ付き）
           echo "Merging PR #$PR_NUMBER..."
-          if retry_command gh pr merge $PR_NUMBER --merge --delete-branch; then
-            echo "✅ PR merged successfully!"
-          else
-            echo "❌ Merge command failed"
-            ERROR_MSG="Failed to execute merge command for PR #$PR_NUMBER"
-            create_failure_issue "$BRANCH_NAME" "$ERROR_MSG"
-            exit 1
-          fi
+          retry_command gh pr merge $PR_NUMBER --merge --delete-branch
 
-          echo ""
-          echo "========================================="
-          echo "✅ AUTO-MERGE COMPLETED SUCCESSFULLY"
-          echo "========================================="
-          echo "Branch: $BRANCH_NAME"
-          echo "PR: #$PR_NUMBER"
-          echo "Deployment will start automatically"
-          echo "========================================="
+          echo "✅ PR merged successfully!"
