@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import CampaignManager from './admin/CampaignManagerNew'
 import CategoryManager from './admin/CategoryManager'
-import FormListPage from '../pages/FormListPage'
+import FormBuilderManager from './admin/FormBuilderManager'
 import CSVManager from './admin/CSVManager'
 
 type Tab = 'categories' | 'campaigns' | 'forms' | 'csv'
@@ -129,7 +129,12 @@ export default function AdminDashboard() {
             onHasChanges={(value) => setHasChanges((prev) => ({ ...prev, campaigns: value }))}
           />
         )}
-        {activeTab === 'forms' && <FormListPage shopId={shopId} />}
+        {activeTab === 'forms' && (
+          <FormBuilderManager
+            shopId={shopId}
+            onHasChanges={(value) => setHasChanges((prev) => ({ ...prev, forms: value }))}
+          />
+        )}
         {activeTab === 'csv' && (
           <CSVManager onHasChanges={(value) => setHasChanges((prev) => ({ ...prev, csv: value }))} />
         )}
