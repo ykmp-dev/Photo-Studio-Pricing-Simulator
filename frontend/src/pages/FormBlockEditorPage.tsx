@@ -171,9 +171,9 @@ export default function FormBlockEditorPage() {
     try {
       // 新しいブロックをデータベースに直接作成してIDを取得
       logger.apiRequest('POST', 'form_blocks')
-      const newBlock = await createFormBlock(form.id, {
+      const newBlock = await createFormBlock({
+        form_schema_id: form.id,
         block_type: blockType,
-        content: null,
         sort_order: localBlocks.length,
         metadata: {},
         show_condition: null,
