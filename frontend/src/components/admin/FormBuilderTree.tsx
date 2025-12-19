@@ -3,7 +3,6 @@ import type { FormBlock, BlockType } from '../../types/formBuilder'
 
 interface FormBuilderTreeProps {
   blocks: FormBlock[]
-  productCategories: Array<{ id: number; display_name: string; items?: any[] }>
   onBlockUpdate: (blockId: number, updates: Partial<FormBlock>) => void
   onBlockDelete: (blockId: number) => void
   onBlockAdd: (blockType: BlockType, parentId?: number, conditionValue?: string) => void
@@ -17,7 +16,6 @@ interface TreeNode {
 
 // ブロックからツリー構造を構築
 function buildTree(blocks: FormBlock[]): TreeNode[] {
-  const blockMap = new Map(blocks.map(b => [b.id, b]))
   const rootBlocks = blocks.filter(b => !b.show_condition)
 
   function buildNode(block: FormBlock, depth: number = 0): TreeNode {
@@ -228,7 +226,6 @@ function TreeBlockItemWrapper({
 
 export default function FormBuilderTree({
   blocks,
-  productCategories,
   onBlockUpdate,
   onBlockDelete,
   onBlockAdd,
