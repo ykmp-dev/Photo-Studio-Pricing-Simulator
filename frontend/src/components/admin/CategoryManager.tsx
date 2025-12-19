@@ -16,7 +16,8 @@ import {
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
 import type { ConditionalRule } from '../../types/formV3'
 import { getErrorMessage } from '../../utils/errorMessages'
-import ConditionalRuleBuilder from './ConditionalRuleBuilder'
+import SimpleConditionBuilder from './SimpleConditionBuilder'
+import { formSectionLabels, productTypeLabels } from '../../utils/labelConverter'
 
 interface CategoryManagerProps {
   shopId: number
@@ -819,7 +820,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   {/* 条件設定（conditionalの場合のみ） */}
                   {formSection === 'conditional' && (
                     <div>
-                      <ConditionalRuleBuilder
+                      <SimpleConditionBuilder
                         value={formConditionalRule}
                         onChange={setFormConditionalRule}
                         availableFields={
@@ -896,8 +897,25 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                 <div key={category.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
-                      <p className="text-sm text-gray-500">キー: {category.name}</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        {category.form_section && (
+                          <span className="text-lg">
+                            {category.form_section === 'trigger' && '📸'}
+                            {category.form_section === 'conditional' && '👗'}
+                            {category.form_section === 'common_final' && '📚'}
+                          </span>
+                        )}
+                        <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
+                      </div>
+                      {category.form_section && (
+                        <p className="text-xs text-gray-600">
+                          {formSectionLabels[category.form_section]}
+                          {category.product_type && ` / ${productTypeLabels[category.product_type]}`}
+                        </p>
+                      )}
+                      {!category.form_section && (
+                        <p className="text-xs text-gray-400">未設定</p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button

@@ -241,7 +241,7 @@ export default function ConditionalRuleBuilder({
       return 'まだ条件が設定されていません'
     }
 
-    const groupDescriptions = validGroups.map((group, groupIndex) => {
+    const groupDescriptions = validGroups.map((group) => {
       const condDescriptions = group.conditions.map((cond) => {
         const field = availableFields.find((f) => f.value === cond.field)
         const fieldLabel = field ? field.label : cond.field
