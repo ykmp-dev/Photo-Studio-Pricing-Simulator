@@ -155,11 +155,26 @@ The auto-merge workflow failed to merge this branch into main.
 
           # ブランチ名を取得
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          echo "Current branch: $BRANCH_NAME"
+          echo "========================================="
+          echo "Auto-merge workflow started"
+          echo "========================================="
+          echo "Branch: $BRANCH_NAME"
+          echo "Repository: ${{ github.repository }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "========================================="
+
+          # mainブランチの存在を確認
+          echo "Fetching main branch..."
+          if ! git fetch origin main:main 2>/dev/null; then
+            echo "⚠️ Could not fetch main branch, trying alternative method..."
+            git fetch origin main
+          fi
+
+          echo "✅ Main branch fetched successfully"
 
           # 既存のPRをチェック（リトライ付き）
           echo "Checking for existing PRs..."
-          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
+          EXISTING_PR=$(retry_command gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number' || echo "")
 
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists"
@@ -183,9 +198,7 @@ The auto-merge workflow failed to merge this branch into main.
               fi
             fi
 
-            PR_URL=$(retry_command gh pr create \
-              --title "Auto-merge: $BRANCH_NAME" \
-              --body "このPRは自動的に作成・マージされます。
+            PR_BODY="このPRは自動的に作成・マージされます。
 
 **Branch**: \`$BRANCH_NAME\`
 **Changes**: Automated changes from Claude Code session
@@ -199,10 +212,13 @@ The auto-merge workflow failed to merge this branch into main.
 - ⏳ Waiting for merge checks
 - 🔄 Will auto-merge when ready
 
-**このPRは自動的に作成されました。問題がある場合は手動で確認してください。**
-" \
+**このPRは自動的に作成されました。問題がある場合は手動で確認してください。**"
+
+            PR_URL=$(retry_command gh pr create \
+              --title "Auto-merge: $BRANCH_NAME" \
+              --body "$PR_BODY" \
               --base main \
-              --head "$BRANCH_NAME")
+              --head "$BRANCH_NAME" || echo "")
 
             if [ -z "$PR_URL" ]; then
               echo "❌ Failed to create PR"
@@ -229,7 +245,7 @@ The auto-merge workflow failed to merge this branch into main.
               sleep 5
             fi
 
-            MERGEABLE=$(retry_command gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' || echo "UNKNOWN")
+            MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
             echo "Mergeable status: $MERGEABLE"
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
@@ -241,7 +257,7 @@ The auto-merge workflow failed to merge this branch into main.
             if auto_fix_branch "$BRANCH_NAME"; then
               echo "✅ Auto-fix successful! Rechecking PR status..."
               sleep 5
-              MERGEABLE=$(retry_command gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' || echo "UNKNOWN")
+              MERGEABLE=$(gh pr view $PR_NUMBER --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
               echo "New mergeable status: $MERGEABLE"
             else
               echo "❌ Auto-fix failed"
