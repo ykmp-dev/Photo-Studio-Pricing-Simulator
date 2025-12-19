@@ -12,12 +12,13 @@ import {
 import { getProductCategories, getItems } from '../services/categoryService'
 import type { FormSchemaWithBlocks, FormBlock, BlockType, ShowCondition, ChoiceOption } from '../types/formBuilder'
 import FormBuilderCanvas from '../components/admin/FormBuilderCanvas'
+import FormBuilderTree from '../components/admin/FormBuilderTree'
 import { getErrorMessage, getSuccessMessage } from '../utils/errorMessages'
 import { createLogger } from '../utils/logger'
 
 const logger = createLogger('FormBlockEditorPage')
 
-type ViewMode = 'list' | 'node'
+type ViewMode = 'list' | 'node' | 'tree'
 
 export default function FormBlockEditorPage() {
   const { formId } = useParams<{ formId: string }>()
