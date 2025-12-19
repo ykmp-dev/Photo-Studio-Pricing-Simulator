@@ -28,6 +28,13 @@ interface FormBuilderCanvasProps {
   fullScreen?: boolean
 }
 
+// blocksToNodesに渡すコールバック
+type NodeCallbacks = {
+  onUpdate: (blockId: number, updates: Partial<FormBlock>) => void
+  onDelete: (blockId: number) => void
+  onCopy?: (block: FormBlock) => void
+}
+
 // 階層的自動レイアウト: 左から右へのフロー
 function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: number; y: number }> {
   const positions = new Map<number, { x: number; y: number }>()
@@ -178,9 +185,9 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
 // FormBlocksをReact Flowのノード構造に変換
 function blocksToNodes(
   blocks: FormBlock[],
+  callbacks: NodeCallbacks,
   positions?: Map<number, { x: number; y: number }>,
-  validationIssues?: ValidationIssue[],
-  onCopy?: (block: FormBlock) => void
+  validationIssues?: ValidationIssue[]
 ): Node[] {
   const layout = positions || calculateHierarchicalLayout(blocks)
   const circularIds = new Set(
@@ -196,9 +203,9 @@ function blocksToNodes(
       position: pos,
       data: {
         block,
-        onUpdate: (_updates: Partial<FormBlock>) => {},
-        onDelete: () => {},
-        onCopy,
+        onUpdate: (updates: Partial<FormBlock>) => callbacks.onUpdate(block.id, updates),
+        onDelete: () => callbacks.onDelete(block.id),
+        onCopy: callbacks.onCopy,
       },
       // 循環参照のみ警告表示（到達不可能は警告レベルなので強調しない）
       style: circularIds.has(block.id)
@@ -254,7 +261,14 @@ function FormBuilderCanvasInner({
   // バリデーション実行
   const validationIssues = useMemo(() => validateBlocks(blocks), [blocks])
 
-  const initialNodes = useMemo(() => blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock), [blocks, validationIssues, handleCopyBlock])
+  // コールバックを作成
+  const nodeCallbacks: NodeCallbacks = useMemo(() => ({
+    onUpdate: onBlockUpdate,
+    onDelete: onBlockDelete,
+    onCopy: handleCopyBlock,
+  }), [onBlockUpdate, onBlockDelete, handleCopyBlock])
+
+  const initialNodes = useMemo(() => blocksToNodes(blocks, nodeCallbacks, undefined, validationIssues), [blocks, nodeCallbacks, validationIssues])
   const initialEdges = useMemo(() => blocksToEdges(blocks), [blocks])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
@@ -266,7 +280,7 @@ function FormBuilderCanvasInner({
       // 既存ノードの位置を保持
       const currentPositions = new Map(currentNodes.map(n => [n.id, n.position]))
 
-      return blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock).map(node => {
+      return blocksToNodes(blocks, nodeCallbacks, undefined, validationIssues).map(node => {
         // 既存の位置があればそれを使用
         const existingPos = currentPositions.get(node.id)
         if (existingPos) {
@@ -276,7 +290,7 @@ function FormBuilderCanvasInner({
       })
     })
     setEdges(blocksToEdges(blocks))
-  }, [blocks, validationIssues, handleCopyBlock, setNodes, setEdges])
+  }, [blocks, validationIssues, nodeCallbacks, setNodes, setEdges])
 
   // 新しいブロックが追加されたときのみフォーカス（自動整理はしない）
   useEffect(() => {
