@@ -11,7 +11,6 @@ import ReactFlow, {
   BackgroundVariant,
   MiniMap,
   NodeMouseHandler,
-  useReactFlow,
   ReactFlowProvider,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -98,9 +97,10 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
   const rootBlocks = blocks.filter((b) => !b.show_condition)
   if (rootBlocks.length === 0 && blocks.length > 0) {
     issues.push({
-      type: 'unreachable',
+      type: 'suggestion',  // unreachable → suggestion に変更（編集中は警告のみ）
       blockIds: blocks.map((b) => b.id),
-      message: 'ルートノード（条件なし）が存在しません',
+      message: 'ルートノード（条件なし）が存在しません。スタート地点となるブロックを作成してください',
+      suggestion: '最初のブロックはshow_conditionを設定せずに作成してください',
     })
     return issues
   }
@@ -144,15 +144,15 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
   // ルートノードから探索開始
   rootBlocks.forEach((root) => dfs(root.id, []))
 
-  // 到達不可能なノードを検出
+  // 到達不可能なノードを検出（編集中は警告のみ）
   const unreachableBlocks = blocks.filter((b) => !reachable.has(b.id))
   if (unreachableBlocks.length > 0) {
     const blockNames = unreachableBlocks.map((b) => `「${b.content || b.block_type}」`).join(', ')
     issues.push({
-      type: 'unreachable',
+      type: 'suggestion',  // unreachable → suggestion に変更
       blockIds: unreachableBlocks.map((b) => b.id),
       message: `到達不可能なノード: ${blockNames}`,
-      suggestion: '親ブロックから接続してください',
+      suggestion: 'スタートブロックから接続されていません。必要に応じて接続してください',
     })
   }
 
@@ -183,9 +183,6 @@ function blocksToNodes(
   onCopy?: (block: FormBlock) => void
 ): Node[] {
   const layout = positions || calculateHierarchicalLayout(blocks)
-  const unreachableIds = new Set(
-    validationIssues?.filter((i) => i.type === 'unreachable').flatMap((i) => i.blockIds) || []
-  )
   const circularIds = new Set(
     validationIssues?.filter((i) => i.type === 'circular').flatMap((i) => i.blockIds) || []
   )
@@ -203,12 +200,10 @@ function blocksToNodes(
         onDelete: () => {},
         onCopy,
       },
-      // バリデーションエラーのあるノードを視覚的に区別
-      style: unreachableIds.has(block.id)
-        ? { border: '3px solid #ef4444', opacity: 0.7 }
-        : circularIds.has(block.id)
-          ? { border: '3px solid #f59e0b', opacity: 0.8 }
-          : undefined,
+      // 循環参照のみ警告表示（到達不可能は警告レベルなので強調しない）
+      style: circularIds.has(block.id)
+        ? { border: '3px solid #f59e0b', opacity: 0.8 }
+        : undefined,
     }
   })
 }
@@ -249,7 +244,6 @@ function FormBuilderCanvasInner({
   const [editingBlock, setEditingBlock] = useState<FormBlock | null>(null)
   const [copiedBlock, setCopiedBlock] = useState<FormBlock | null>(null)  // コピーしたブロック
   const previousBlockCountRef = useRef(blocks.length)
-  const { fitView } = useReactFlow()
 
   // ブロックをコピー
   const handleCopyBlock = useCallback((block: FormBlock) => {
@@ -266,22 +260,32 @@ function FormBuilderCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-  // blocksが変更されたときにnodesとedgesを更新
+  // blocksが変更されたときにnodesとedgesを更新（位置は保持）
   useEffect(() => {
-    setNodes(blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock))
+    setNodes((currentNodes) => {
+      // 既存ノードの位置を保持
+      const currentPositions = new Map(currentNodes.map(n => [n.id, n.position]))
+
+      return blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock).map(node => {
+        // 既存の位置があればそれを使用
+        const existingPos = currentPositions.get(node.id)
+        if (existingPos) {
+          return { ...node, position: existingPos }
+        }
+        return node
+      })
+    })
     setEdges(blocksToEdges(blocks))
   }, [blocks, validationIssues, handleCopyBlock, setNodes, setEdges])
 
-  // 新しいブロックが追加されたときにフォーカス
+  // 新しいブロックが追加されたときのみフォーカス（自動整理はしない）
   useEffect(() => {
     if (blocks.length > previousBlockCountRef.current) {
-      // ブロックが追加された
-      setTimeout(() => {
-        fitView({ padding: 0.2, duration: 300 })
-      }, 100)
+      // ブロックが追加された場合、fitViewは実行しない（ユーザーの手動配置を尊重）
+      // 必要に応じて「レイアウト整列」ボタンで整理できる
     }
     previousBlockCountRef.current = blocks.length
-  }, [blocks.length, fitView])
+  }, [blocks.length])
 
   // 自動レイアウト整理
   const handleAutoLayout = useCallback(() => {
@@ -385,12 +389,10 @@ function FormBuilderCanvasInner({
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {validationIssues.map((issue, idx) => (
               <div key={idx} className={`text-sm p-2 rounded ${
-                issue.type === 'unreachable' ? 'bg-red-50 border border-red-200' :
                 issue.type === 'circular' ? 'bg-orange-50 border border-orange-200' :
                 'bg-blue-50 border border-blue-200'
               }`}>
                 <div className="font-medium mb-1">
-                  {issue.type === 'unreachable' && '🔴 '}
                   {issue.type === 'circular' && '🟠 '}
                   {issue.type === 'suggestion' && '💡 '}
                   {issue.message}
@@ -404,7 +406,7 @@ function FormBuilderCanvasInner({
             ))}
           </div>
           <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
-            🔴 エラー / 🟠 警告 / 💡 推奨アクション
+            🟠 警告 / 💡 推奨アクション
           </div>
         </div>
       )}
