@@ -266,6 +266,12 @@ function FormBuilderCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
+  // blocksが変更されたときにnodesとedgesを更新
+  useEffect(() => {
+    setNodes(blocksToNodes(blocks, undefined, validationIssues, handleCopyBlock))
+    setEdges(blocksToEdges(blocks))
+  }, [blocks, validationIssues, handleCopyBlock, setNodes, setEdges])
+
   // 新しいブロックが追加されたときにフォーカス
   useEffect(() => {
     if (blocks.length > previousBlockCountRef.current) {
@@ -466,9 +472,9 @@ function FormBuilderCanvasInner({
         <button
           onClick={handleAutoLayout}
           className="w-full px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-          title="ノードを自動的にきれいに整列します"
+          title="ノードを階層的に自動整列します（左から右へのフロー形式）"
         >
-          ✨ きれいに整理
+          📐 レイアウト整列
         </button>
         <button
           onClick={handlePasteBlock}
