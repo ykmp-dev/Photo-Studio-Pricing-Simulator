@@ -126,8 +126,8 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
         return row
       })
 
-      // データのバリデーション
-      if (rows.some(row => !row.shop_id || row.shop_id !== shopId)) {
+      // データのバリデーション（シンプルモードではスキップ）
+      if (!simpleMode && rows.some(row => !row.shop_id || row.shop_id !== shopId)) {
         if (!confirm('shop_idが一致しないデータが含まれています。続行しますか？')) {
           e.target.value = ''
           return
