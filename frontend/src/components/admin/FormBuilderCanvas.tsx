@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -11,6 +11,7 @@ import ReactFlow, {
   BackgroundVariant,
   MiniMap,
   NodeMouseHandler,
+  ReactFlowProvider,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import type { FormBlock, BlockType } from '../../types/formBuilder'
@@ -24,9 +25,17 @@ interface FormBuilderCanvasProps {
   onBlockDelete: (blockId: number) => void
   onBlockAdd: (blockType: BlockType) => void
   onBlocksReorder: (blocks: FormBlock[]) => void
+  fullScreen?: boolean
 }
 
-// 階層的自動レイアウト: 条件分岐で横に広がる
+// blocksToNodesに渡すコールバック
+type NodeCallbacks = {
+  onUpdate: (blockId: number, updates: Partial<FormBlock>) => void
+  onDelete: (blockId: number) => void
+  onCopy?: (block: FormBlock) => void
+}
+
+// 階層的自動レイアウト: 左から右へのフロー
 function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: number; y: number }> {
   const positions = new Map<number, { x: number; y: number }>()
 
@@ -45,33 +54,36 @@ function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: numb
     }
   })
 
-  const VERTICAL_SPACING = 150
-  const HORIZONTAL_SPACING = 300
-  let currentY = 100
+  // ノード間隔を狭くする
+  const HORIZONTAL_SPACING = 250  // 左から右への間隔
+  const VERTICAL_SPACING = 100     // 上下の間隔
 
-  // 再帰的にレイアウト
-  const layoutNode = (block: FormBlock, x: number, depth: number): number => {
+  // 深さごとに使用したY座標を追跡
+  const depthYPosition = new Map<number, number>()
+
+  // 再帰的にレイアウト（左から右へ）
+  const layoutNode = (block: FormBlock, depth: number): void => {
+    const x = 100 + depth * HORIZONTAL_SPACING
+
+    // この深さで次に使用するY座標を取得
+    const currentY = depthYPosition.get(depth) || 100
     const y = currentY
-    currentY += VERTICAL_SPACING
+
+    // 次のノードのために、Y座標を更新
+    depthYPosition.set(depth, currentY + VERTICAL_SPACING)
 
     positions.set(block.id, { x, y })
 
+    // 子ノードを配置
     const children = childrenMap.get(block.id) || []
-    if (children.length > 0) {
-      // 子ノードを横に配置
-      children.forEach((child, index) => {
-        const childX = x + (index - (children.length - 1) / 2) * HORIZONTAL_SPACING
-        layoutNode(child, childX, depth + 1)
-      })
-    }
-
-    return y
+    children.forEach((child) => {
+      layoutNode(child, depth + 1)
+    })
   }
 
-  // ルートノードからレイアウト開始
-  rootBlocks.forEach((root, index) => {
-    const startX = 250 + index * HORIZONTAL_SPACING * 2
-    layoutNode(root, startX, 0)
+  // ルートノードからレイアウト開始（左側から）
+  rootBlocks.forEach((root) => {
+    layoutNode(root, 0)
   })
 
   return positions
@@ -79,9 +91,10 @@ function calculateHierarchicalLayout(blocks: FormBlock[]): Map<number, { x: numb
 
 // バリデーション：到達不可能ノードと循環参照を検出
 interface ValidationIssue {
-  type: 'unreachable' | 'circular'
+  type: 'unreachable' | 'circular' | 'suggestion'
   blockIds: number[]
   message: string
+  suggestion?: string  // 推奨アクション
 }
 
 function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
@@ -91,9 +104,10 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
   const rootBlocks = blocks.filter((b) => !b.show_condition)
   if (rootBlocks.length === 0 && blocks.length > 0) {
     issues.push({
-      type: 'unreachable',
+      type: 'suggestion',  // unreachable → suggestion に変更（編集中は警告のみ）
       blockIds: blocks.map((b) => b.id),
-      message: 'ルートノード（条件なし）が存在しません',
+      message: 'ルートノード（条件なし）が存在しません。スタート地点となるブロックを作成してください',
+      suggestion: '最初のブロックはshow_conditionを設定せずに作成してください',
     })
     return issues
   }
@@ -137,15 +151,33 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
   // ルートノードから探索開始
   rootBlocks.forEach((root) => dfs(root.id, []))
 
-  // 到達不可能なノードを検出
+  // 到達不可能なノードを検出（編集中は警告のみ）
   const unreachableBlocks = blocks.filter((b) => !reachable.has(b.id))
   if (unreachableBlocks.length > 0) {
+    const blockNames = unreachableBlocks.map((b) => `「${b.content || b.block_type}」`).join(', ')
     issues.push({
-      type: 'unreachable',
+      type: 'suggestion',  // unreachable → suggestion に変更
       blockIds: unreachableBlocks.map((b) => b.id),
-      message: `到達不可能なノードが${unreachableBlocks.length}個あります`,
+      message: `到達不可能なノード: ${blockNames}`,
+      suggestion: 'スタートブロックから接続されていません。必要に応じて接続してください',
     })
   }
+
+  // Yes/Noブロックの後に推奨アクション
+  const yesNoBlocks = blocks.filter((b) => b.block_type === 'yes_no')
+  yesNoBlocks.forEach((yesNoBlock) => {
+    const yesChildren = blocks.filter((b) => b.show_condition?.block_id === yesNoBlock.id && b.show_condition.value === 'yes')
+    const noChildren = blocks.filter((b) => b.show_condition?.block_id === yesNoBlock.id && b.show_condition.value === 'no')
+
+    if (yesChildren.length === 0 || noChildren.length === 0) {
+      issues.push({
+        type: 'suggestion',
+        blockIds: [yesNoBlock.id],
+        message: `「${yesNoBlock.content || 'Yes/No'}」ブロックには、Yesの場合とNoの場合の両方のブロックを追加することをお勧めします`,
+        suggestion: '右側のハンドルから次のブロックに接続してください',
+      })
+    }
+  })
 
   return issues
 }
@@ -153,13 +185,11 @@ function validateBlocks(blocks: FormBlock[]): ValidationIssue[] {
 // FormBlocksをReact Flowのノード構造に変換
 function blocksToNodes(
   blocks: FormBlock[],
+  callbacks: NodeCallbacks,
   positions?: Map<number, { x: number; y: number }>,
   validationIssues?: ValidationIssue[]
 ): Node[] {
   const layout = positions || calculateHierarchicalLayout(blocks)
-  const unreachableIds = new Set(
-    validationIssues?.filter((i) => i.type === 'unreachable').flatMap((i) => i.blockIds) || []
-  )
   const circularIds = new Set(
     validationIssues?.filter((i) => i.type === 'circular').flatMap((i) => i.blockIds) || []
   )
@@ -173,15 +203,14 @@ function blocksToNodes(
       position: pos,
       data: {
         block,
-        onUpdate: (_updates: Partial<FormBlock>) => {},
-        onDelete: () => {},
+        onUpdate: (updates: Partial<FormBlock>) => callbacks.onUpdate(block.id, updates),
+        onDelete: () => callbacks.onDelete(block.id),
+        onCopy: callbacks.onCopy,
       },
-      // バリデーションエラーのあるノードを視覚的に区別
-      style: unreachableIds.has(block.id)
-        ? { border: '3px solid #ef4444', opacity: 0.7 }
-        : circularIds.has(block.id)
-          ? { border: '3px solid #f59e0b', opacity: 0.8 }
-          : undefined,
+      // 循環参照のみ警告表示（到達不可能は警告レベルなので強調しない）
+      style: circularIds.has(block.id)
+        ? { border: '3px solid #f59e0b', opacity: 0.8 }
+        : undefined,
     }
   })
 }
@@ -210,24 +239,96 @@ function blocksToEdges(blocks: FormBlock[]): Edge[] {
   return edges
 }
 
-export default function FormBuilderCanvas({
+function FormBuilderCanvasInner({
   blocks,
   productCategories,
   onBlockUpdate,
   onBlockDelete,
   onBlockAdd,
   onBlocksReorder: _onBlocksReorder,
+  fullScreen = false,
 }: FormBuilderCanvasProps) {
   const [editingBlock, setEditingBlock] = useState<FormBlock | null>(null)
+  const [copiedBlock, setCopiedBlock] = useState<FormBlock | null>(null)  // コピーしたブロック
+  const previousBlockCountRef = useRef(blocks.length)
+
+  // ブロックをコピー
+  const handleCopyBlock = useCallback((block: FormBlock) => {
+    setCopiedBlock(block)
+    alert(`「${block.content || 'ブロック'}」をコピーしました`)
+  }, [])
 
   // バリデーション実行
   const validationIssues = useMemo(() => validateBlocks(blocks), [blocks])
 
-  const initialNodes = useMemo(() => blocksToNodes(blocks, undefined, validationIssues), [blocks, validationIssues])
+  // コールバックを作成
+  const nodeCallbacks: NodeCallbacks = useMemo(() => ({
+    onUpdate: onBlockUpdate,
+    onDelete: onBlockDelete,
+    onCopy: handleCopyBlock,
+  }), [onBlockUpdate, onBlockDelete, handleCopyBlock])
+
+  const initialNodes = useMemo(() => blocksToNodes(blocks, nodeCallbacks, undefined, validationIssues), [blocks, nodeCallbacks, validationIssues])
   const initialEdges = useMemo(() => blocksToEdges(blocks), [blocks])
 
-  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
+  // blocksが変更されたときにnodesとedgesを更新（位置は保持）
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      // 既存ノードの位置を保持
+      const currentPositions = new Map(currentNodes.map(n => [n.id, n.position]))
+
+      return blocksToNodes(blocks, nodeCallbacks, undefined, validationIssues).map(node => {
+        // 既存の位置があればそれを使用
+        const existingPos = currentPositions.get(node.id)
+        if (existingPos) {
+          return { ...node, position: existingPos }
+        }
+        return node
+      })
+    })
+    setEdges(blocksToEdges(blocks))
+  }, [blocks, validationIssues, nodeCallbacks, setNodes, setEdges])
+
+  // 新しいブロックが追加されたときのみフォーカス（自動整理はしない）
+  useEffect(() => {
+    if (blocks.length > previousBlockCountRef.current) {
+      // ブロックが追加された場合、fitViewは実行しない（ユーザーの手動配置を尊重）
+      // 必要に応じて「レイアウト整列」ボタンで整理できる
+    }
+    previousBlockCountRef.current = blocks.length
+  }, [blocks.length])
+
+  // 自動レイアウト整理
+  const handleAutoLayout = useCallback(() => {
+    const newLayout = calculateHierarchicalLayout(blocks)
+    const updatedNodes = nodes.map((node) => {
+      const blockId = parseInt(node.id)
+      const newPos = newLayout.get(blockId)
+      if (newPos) {
+        return { ...node, position: newPos }
+      }
+      return node
+    })
+    setNodes(updatedNodes)
+  }, [blocks, nodes, setNodes])
+
+  // ブロックを貼り付け
+  const handlePasteBlock = useCallback(async () => {
+    if (!copiedBlock) {
+      alert('コピーされたブロックがありません')
+      return
+    }
+
+    // 新しいブロックを作成（show_conditionは除外）
+    await onBlockAdd(copiedBlock.block_type)
+
+    // TODO: コピーしたブロックのcontentやmetadataも反映させる
+    // 現在の実装では、ブロックタイプのみコピーされます
+    alert('ブロックを貼り付けました（内容は後で編集してください）')
+  }, [copiedBlock, onBlockAdd])
 
   // ノードダブルクリックで編集モーダル
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
@@ -249,20 +350,28 @@ export default function FormBuilderCanvas({
         const sourceBlockId = parseInt(connection.source)
         const targetBlockId = parseInt(connection.target)
 
-        // TODO: モーダルで条件値を入力させる
-        // 今は仮でデフォルト値を設定
         const sourceBlock = blocks.find((b) => b.id === sourceBlockId)
-        let conditionValue = 'yes'
+        let conditionValue = 'next'  // デフォルト値
+        let conditionType: 'yes_no' | 'choice' | 'next' = 'next'
 
-        if (sourceBlock?.block_type === 'choice') {
+        // ブロックタイプに応じて条件値を設定
+        if (sourceBlock?.block_type === 'yes_no') {
+          conditionType = 'yes_no'
+          conditionValue = 'yes'  // デフォルトで「はい」の場合に表示
+        } else if (sourceBlock?.block_type === 'choice') {
+          conditionType = 'choice'
           // Choice blockの場合、最初の選択肢をデフォルトにする
           const options = sourceBlock.metadata?.choice_options || []
-          conditionValue = options[0]?.value || ''
+          conditionValue = options[0]?.value || 'next'
+        } else {
+          // text/heading/category_referenceの場合は'next'タイプを使用
+          conditionType = 'next'
+          conditionValue = 'next'
         }
 
         onBlockUpdate(targetBlockId, {
           show_condition: {
-            type: sourceBlock?.block_type === 'yes_no' ? 'yes_no' : 'choice',
+            type: conditionType,
             block_id: sourceBlockId,
             value: conditionValue,
           },
@@ -281,24 +390,37 @@ export default function FormBuilderCanvas({
   )
 
   return (
-    <div style={{ width: '100%', height: '600px' }} className="border border-gray-300 rounded-lg relative">
+    <div
+      style={{ width: '100%', height: fullScreen ? '100%' : '600px' }}
+      className={fullScreen ? 'relative' : 'border border-gray-300 rounded-lg relative'}
+    >
       {/* バリデーション警告 */}
       {validationIssues.length > 0 && (
-        <div className="absolute top-4 right-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-lg p-3 max-w-md z-10">
-          <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-            ⚠️ バリデーション警告
+        <div className="absolute top-4 right-4 bg-white border-2 border-yellow-400 rounded-lg shadow-xl p-4 max-w-md z-10">
+          <h4 className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
+            ⚠️ アドバイス ({validationIssues.length})
           </h4>
-          <div className="space-y-1">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {validationIssues.map((issue, idx) => (
-              <div key={idx} className="text-sm text-yellow-700">
-                {issue.type === 'unreachable' && '🔴 '}
-                {issue.type === 'circular' && '🟠 '}
-                {issue.message}
+              <div key={idx} className={`text-sm p-2 rounded ${
+                issue.type === 'circular' ? 'bg-orange-50 border border-orange-200' :
+                'bg-blue-50 border border-blue-200'
+              }`}>
+                <div className="font-medium mb-1">
+                  {issue.type === 'circular' && '🟠 '}
+                  {issue.type === 'suggestion' && '💡 '}
+                  {issue.message}
+                </div>
+                {issue.suggestion && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    👉 {issue.suggestion}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-          <div className="text-xs text-yellow-600 mt-2">
-            🔴 到達不可能 / 🟠 循環参照
+          <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
+            🟠 警告 / 💡 推奨アクション
           </div>
         </div>
       )}
@@ -312,6 +434,15 @@ export default function FormBuilderCanvas({
         onNodeDoubleClick={onNodeDoubleClick}
         nodeTypes={nodeTypes}
         fitView
+        defaultEdgeOptions={{
+          animated: true,
+          style: { strokeWidth: 2 },
+        }}
+        proOptions={{ hideAttribution: true }}
+        minZoom={0.2}
+        maxZoom={2}
+        snapToGrid={true}
+        snapGrid={[15, 15]}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         <Controls />
@@ -352,6 +483,29 @@ export default function FormBuilderCanvas({
         </button>
       </div>
 
+      {/* 操作ツールバー */}
+      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 space-y-2">
+        <button
+          onClick={handleAutoLayout}
+          className="w-full px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+          title="ノードを階層的に自動整列します（左から右へのフロー形式）"
+        >
+          📐 レイアウト整列
+        </button>
+        <button
+          onClick={handlePasteBlock}
+          disabled={!copiedBlock}
+          className={`w-full px-3 py-2 text-sm rounded font-medium ${
+            copiedBlock
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+          title={copiedBlock ? `「${copiedBlock.content || copiedBlock.block_type}」を貼り付け` : 'ブロックをコピーしてください'}
+        >
+          📋 貼り付け
+        </button>
+      </div>
+
       {/* ブロック編集モーダル */}
       {editingBlock && (
         <BlockEditModal
@@ -369,5 +523,14 @@ export default function FormBuilderCanvas({
         />
       )}
     </div>
+  )
+}
+
+// ReactFlowProviderでラップしたデフォルトエクスポート
+export default function FormBuilderCanvas(props: FormBuilderCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <FormBuilderCanvasInner {...props} />
+    </ReactFlowProvider>
   )
 }

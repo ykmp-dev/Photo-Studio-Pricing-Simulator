@@ -6,6 +6,7 @@ interface FormBlockNodeData {
   block: FormBlock
   onUpdate: (updates: Partial<FormBlock>) => void
   onDelete: () => void
+  onCopy?: (block: FormBlock) => void
 }
 
 // ブロックタイプごとのアイコンと色
@@ -21,6 +22,7 @@ const blockStyles = {
 function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
   const { block } = data
   const style = blockStyles[block.block_type]
+  const isRoot = !block.show_condition  // ルートブロック判定
 
   // ブロックタイプのラベル
   const typeLabels: Record<typeof block.block_type, string> = {
@@ -34,21 +36,36 @@ function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
 
   return (
     <div
-      className={`px-4 py-3 shadow-md rounded-lg border-2 ${style.color} ${style.border} min-w-[200px]`}
+      className={`px-3 py-2 shadow-md rounded-lg border-2 ${isRoot ? 'border-indigo-500 ring-2 ring-indigo-200' : style.border} ${style.color} min-w-[160px] max-w-[220px] relative`}
+      onContextMenu={(e) => {
+        if (data.onCopy) {
+          e.preventDefault()
+          data.onCopy(block)
+        }
+      }}
+      title="右クリックでコピー"
     >
-      {/* 入力ハンドル (条件分岐の入力) */}
-      {block.block_type !== 'text' && block.block_type !== 'heading' && (
-        <Handle type="target" position={Position.Top} className="w-3 h-3" />
+      {/* ルートブロックのバッジ */}
+      {isRoot && (
+        <div className="absolute -top-2 -left-2 bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+          START
+        </div>
       )}
+      {/* 入力ハンドル（左側） - すべてのブロックに追加 */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 !bg-gray-400"
+      />
 
       {/* ヘッダー */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{style.icon}</span>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-base">{style.icon}</span>
         <span className="text-xs font-semibold text-gray-600">{typeLabels[block.block_type]}</span>
       </div>
 
       {/* コンテンツ */}
-      <div className="text-sm text-gray-800 font-medium mb-1 line-clamp-2">
+      <div className="text-xs text-gray-800 font-medium mb-1 line-clamp-2">
         {block.content || <span className="text-gray-400 italic">（内容なし）</span>}
       </div>
 
@@ -68,15 +85,17 @@ function FormBlockNode({ data }: NodeProps<FormBlockNodeData>) {
 
       {/* 条件表示 */}
       {block.show_condition && (
-        <div className="mt-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+        <div className="mt-1.5 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
           条件: {block.show_condition.value}
         </div>
       )}
 
-      {/* 出力ハンドル (Yes/NoやChoiceの出力) */}
-      {(block.block_type === 'yes_no' || block.block_type === 'choice') && (
-        <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
-      )}
+      {/* 出力ハンドル（右側） - すべてのブロックに追加 */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 !bg-blue-500"
+      />
     </div>
   )
 }

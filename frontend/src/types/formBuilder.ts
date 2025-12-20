@@ -1,5 +1,7 @@
 // フォームビルダー関連の型定義
 
+export type FormStatus = 'draft' | 'published'
+
 export interface FormSchema {
   id: number
   shop_id: number
@@ -8,9 +10,11 @@ export interface FormSchema {
   category: string | null
   description: string | null
   is_active: boolean
+  status: FormStatus
   sort_order: number
   created_at: string
   updated_at: string
+  published_at: string | null
 }
 
 export type FieldType = 'select' | 'checkbox' | 'radio' | 'text' | 'number'
@@ -26,9 +30,9 @@ export interface ChoiceOption {
 
 // Condition for conditional block display
 export interface ShowCondition {
-  type: 'yes_no' | 'choice'
+  type: 'yes_no' | 'choice' | 'next'
   block_id: number
-  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value
+  value: string  // yes_no: 'yes'|'no', choice: ChoiceOption.value, next: 'next'
 }
 
 export interface FormBlock {
@@ -48,6 +52,26 @@ export interface FormBlock {
   show_condition: ShowCondition | null
   created_at: string
   updated_at: string
+}
+
+// 公開済みブロック（エンドユーザーが見る）
+export interface PublishedBlock {
+  id: number
+  form_schema_id: number
+  block_type: BlockType
+  content: string | null
+  sort_order: number
+  metadata: {
+    product_category_id?: number
+    display_mode?: 'expanded' | 'collapsed'
+    choice_options?: ChoiceOption[]
+    choice_display?: 'radio' | 'select' | 'auto'
+    auto_sync_category_id?: number
+  }
+  show_condition: ShowCondition | null
+  created_at: string
+  updated_at: string
+  published_at: string
 }
 
 export interface FormField {
@@ -103,6 +127,7 @@ export interface CreateFormSchema {
   category?: string
   description?: string
   is_active?: boolean
+  status?: FormStatus
   sort_order?: number
 }
 
@@ -112,6 +137,7 @@ export interface UpdateFormSchema {
   category?: string
   description?: string
   is_active?: boolean
+  status?: FormStatus
   sort_order?: number
 }
 
@@ -178,9 +204,14 @@ export interface FormFieldWithOptions extends FormField {
   conditional_rules: ConditionalRule[]
 }
 
-// フォームとブロック
+// フォームとブロック（編集用）
 export interface FormSchemaWithBlocks extends FormSchema {
   blocks: FormBlock[]
+}
+
+// フォームと公開済みブロック（エンドユーザー向け）
+export interface FormSchemaWithPublishedBlocks extends FormSchema {
+  published_blocks: PublishedBlock[]
 }
 
 // Create/Update types for blocks

@@ -14,19 +14,33 @@ import {
   deleteItem,
 } from '../../services/categoryService'
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
-import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
+import { getErrorMessage } from '../../utils/errorMessages'
 
 interface CategoryManagerProps {
   shopId: number
+  onHasChanges?: (hasChanges: boolean) => void
 }
 
 type View = 'shooting' | 'product' | 'items'
 
-export default function CategoryManager({ shopId }: CategoryManagerProps) {
+// 下書きアイテム型（新規作成の場合、idはマイナス値を使用）
+type DraftItem = Item | Omit<Item, 'id' | 'created_at' | 'updated_at'> & { id: number }
+
+export default function CategoryManager({ shopId, onHasChanges }: CategoryManagerProps) {
   const [view, setView] = useState<View>('shooting')
-  const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
-  const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
-  const [items, setItems] = useState<Item[]>([])
+
+  // 本番データ（データベースから読み込んだ状態）
+  const [publishedShooting, setPublishedShooting] = useState<ShootingCategory[]>([])
+  const [publishedProduct, setPublishedProduct] = useState<ProductCategory[]>([])
+  const [publishedItems, setPublishedItems] = useState<Item[]>([])
+
+  // 下書きデータ（編集中の状態）
+  const [draftShooting, setDraftShooting] = useState<ShootingCategory[]>([])
+  const [draftProduct, setDraftProduct] = useState<ProductCategory[]>([])
+  const [draftItems, setDraftItems] = useState<DraftItem[]>([])
+
+  // 変更フラグ
+  const [hasChanges, setHasChanges] = useState(false)
 
   // 選択中のカテゴリ
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
@@ -43,25 +57,54 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
 
+  // 変更通知
+  useEffect(() => {
+    onHasChanges?.(hasChanges)
+  }, [hasChanges, onHasChanges])
+
+  // データ読み込み
   useEffect(() => {
     loadData()
-  }, [shopId, view])
+  }, [shopId])
 
   useEffect(() => {
-    if (selectedProduct) {
+    if (view === 'items') {
+      loadAllData()
+    }
+  }, [view])
+
+  useEffect(() => {
+    if (selectedProduct && view === 'items') {
       loadItems()
     }
-  }, [selectedProduct])
+  }, [selectedProduct, view])
+
+  const loadAllData = async () => {
+    try {
+      const [shooting, product] = await Promise.all([
+        getShootingCategories(shopId),
+        getProductCategories(shopId),
+      ])
+      setPublishedShooting(shooting)
+      setPublishedProduct(product)
+      setDraftShooting(shooting)
+      setDraftProduct(product)
+    } catch (err) {
+      console.error('データの読み込みに失敗しました:', err)
+    }
+  }
 
   const loadData = async () => {
     try {
       if (view === 'shooting') {
         const shooting = await getShootingCategories(shopId)
-        setShootingCategories(shooting)
+        setPublishedShooting(shooting)
+        setDraftShooting(shooting)
       }
       if (view === 'product') {
         const product = await getProductCategories(shopId)
-        setProductCategories(product)
+        setPublishedProduct(product)
+        setDraftProduct(product)
       }
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
@@ -72,155 +115,152 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     if (!selectedProduct) return
     try {
       const itemsData = await getItems(shopId, selectedProduct)
-      setItems(itemsData)
+      setPublishedItems(itemsData)
+      setDraftItems(itemsData)
     } catch (err) {
       console.error('アイテムの読み込みに失敗しました:', err)
     }
   }
 
-  const handleCreateShooting = async (e: React.FormEvent) => {
+  const handleCreateShooting = (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      await createShootingCategory({
-        shop_id: shopId,
-        name: formName,
-        display_name: formDisplayName,
-        description: formDescription || undefined,
-      })
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('create', '撮影カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
+    const newId = -Math.floor(Math.random() * 1000000) // 負の値でテンポラリIDを作成
+    const now = new Date().toISOString()
+    const newCategory: ShootingCategory = {
+      id: newId,
+      shop_id: shopId,
+      name: formName,
+      display_name: formDisplayName,
+      description: formDescription || null,
+      sort_order: draftShooting.length,
+      is_active: true,
+      created_at: now,
+      updated_at: now,
     }
+    setDraftShooting([...draftShooting, newCategory])
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
+  const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      await createProductCategory({
-        shop_id: shopId,
-        name: formName,
-        display_name: formDisplayName,
-        description: formDescription || undefined,
-      })
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('create', '商品カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
+
+    const newId = -Math.floor(Math.random() * 1000000)
+    const now = new Date().toISOString()
+    const newCategory: ProductCategory = {
+      id: newId,
+      shop_id: shopId,
+      name: formName,
+      display_name: formDisplayName,
+      description: formDescription || null,
+      sort_order: draftProduct.length,
+      is_active: true,
+      created_at: now,
+      updated_at: now,
     }
+    setDraftProduct([...draftProduct, newCategory])
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleCreateItem = async (e: React.FormEvent) => {
+  const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProduct) {
       alert('商品カテゴリを選択してください')
       return
     }
-    try {
-      await createItem({
-        shop_id: shopId,
-        product_category_id: selectedProduct,
-        name: formDisplayName,
-        price: formPrice,
-        description: formDescription || undefined,
-        auto_select: formAutoSelect,
-      })
-      resetForm()
-      await loadItems()
-      alert(getSuccessMessage('create', 'アイテム'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
+    const newId = -Math.floor(Math.random() * 1000000)
+    const now = new Date().toISOString()
+    const newItem: DraftItem = {
+      id: newId,
+      shop_id: shopId,
+      product_category_id: selectedProduct,
+      name: formDisplayName,
+      price: formPrice,
+      description: formDescription || null,
+      sort_order: draftItems.length,
+      is_active: true,
+      is_required: false,
+      auto_select: formAutoSelect,
+      created_at: now,
+      updated_at: now,
     }
+    setDraftItems([...draftItems, newItem])
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleUpdateShooting = async (id: number) => {
-    try {
-      await updateShootingCategory(id, {
-        name: formName,
-        display_name: formDisplayName,
-        description: formDescription || undefined,
-      })
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('update', '撮影カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleUpdateShooting = (id: number) => {
+    setDraftShooting(
+      draftShooting.map((cat) =>
+        cat.id === id
+          ? {
+              ...cat,
+              name: formName,
+              display_name: formDisplayName,
+              description: formDescription || null,
+              updated_at: new Date().toISOString(),
+            }
+          : cat
+      )
+    )
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleUpdateProduct = async (id: number) => {
-    try {
-      await updateProductCategory(id, {
-        name: formName,
-        display_name: formDisplayName,
-        description: formDescription || undefined,
-      })
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('update', '商品カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleUpdateProduct = (id: number) => {
+    setDraftProduct(
+      draftProduct.map((cat) =>
+        cat.id === id
+          ? {
+              ...cat,
+              name: formName,
+              display_name: formDisplayName,
+              description: formDescription || null,
+              updated_at: new Date().toISOString(),
+            }
+          : cat
+      )
+    )
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleUpdateItem = async (id: number) => {
-    try {
-      await updateItem(id, {
-        name: formDisplayName,
-        price: formPrice,
-        description: formDescription || undefined,
-        auto_select: formAutoSelect,
-      })
-      resetForm()
-      await loadItems()
-      alert(getSuccessMessage('update', 'アイテム'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleUpdateItem = (id: number) => {
+    setDraftItems(
+      draftItems.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              name: formDisplayName,
+              price: formPrice,
+              description: formDescription || null,
+              auto_select: formAutoSelect,
+              updated_at: new Date().toISOString(),
+            }
+          : item
+      )
+    )
+    setHasChanges(true)
+    resetForm()
   }
 
-  const handleDeleteShooting = async (id: number, name: string) => {
-    if (!confirm(`「${name}」を削除しますか？`)) return
-    try {
-      await deleteShootingCategory(id)
-      await loadData()
-      alert(getSuccessMessage('delete', '撮影カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleDeleteShooting = (id: number, name: string) => {
+    if (!confirm(`「${name}」を削除しますか？\n※この変更は「更新」ボタンを押すまでデータベースに反映されません`)) return
+    setDraftShooting(draftShooting.filter((cat) => cat.id !== id))
+    setHasChanges(true)
   }
 
-  const handleDeleteProduct = async (id: number, name: string) => {
-    if (!confirm(`「${name}」を削除しますか？`)) return
-    try {
-      await deleteProductCategory(id)
-      await loadData()
-      alert(getSuccessMessage('delete', '商品カテゴリ'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleDeleteProduct = (id: number, name: string) => {
+    if (!confirm(`「${name}」を削除しますか？\n※この変更は「更新」ボタンを押すまでデータベースに反映されません`)) return
+    setDraftProduct(draftProduct.filter((cat) => cat.id !== id))
+    setHasChanges(true)
   }
 
-  const handleDeleteItem = async (id: number, name: string) => {
-    if (!confirm(`「${name}」を削除しますか？`)) return
-    try {
-      await deleteItem(id)
-      await loadItems()
-      alert(getSuccessMessage('delete', 'アイテム'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+  const handleDeleteItem = (id: number, name: string) => {
+    if (!confirm(`「${name}」を削除しますか？\n※この変更は「更新」ボタンを押すまでデータベースに反映されません`)) return
+    setDraftItems(draftItems.filter((item) => item.id !== id))
+    setHasChanges(true)
   }
 
   const resetForm = () => {
@@ -248,7 +288,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setEditingProductId(category.id)
   }
 
-  const startEditItem = (item: Item) => {
+  const startEditItem = (item: DraftItem) => {
     setFormDisplayName(item.name)
     setFormPrice(item.price)
     setFormDescription(item.description || '')
@@ -256,13 +296,154 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
     setEditingItemId(item.id)
   }
 
+  // 下書きを本番に反映（データベースに保存）
+  const handlePublish = async () => {
+    if (!confirm('変更を保存しますか？')) return
+
+    try {
+      // 撮影カテゴリの同期
+      for (const draft of draftShooting) {
+        const published = publishedShooting.find((p) => p.id === draft.id)
+        if (!published) {
+          // 新規作成
+          await createShootingCategory({
+            shop_id: draft.shop_id,
+            name: draft.name,
+            display_name: draft.display_name,
+            description: draft.description || undefined,
+          })
+        } else if (JSON.stringify(published) !== JSON.stringify(draft)) {
+          // 更新
+          await updateShootingCategory(draft.id, {
+            name: draft.name,
+            display_name: draft.display_name,
+            description: draft.description || undefined,
+          })
+        }
+      }
+
+      // 削除された撮影カテゴリ
+      for (const published of publishedShooting) {
+        if (!draftShooting.find((d) => d.id === published.id)) {
+          await deleteShootingCategory(published.id)
+        }
+      }
+
+      // 商品カテゴリの同期
+      for (const draft of draftProduct) {
+        const published = publishedProduct.find((p) => p.id === draft.id)
+        if (!published) {
+          await createProductCategory({
+            shop_id: draft.shop_id,
+            name: draft.name,
+            display_name: draft.display_name,
+            description: draft.description || undefined,
+          })
+        } else if (JSON.stringify(published) !== JSON.stringify(draft)) {
+          await updateProductCategory(draft.id, {
+            name: draft.name,
+            display_name: draft.display_name,
+            description: draft.description || undefined,
+          })
+        }
+      }
+
+      // 削除された商品カテゴリ
+      for (const published of publishedProduct) {
+        if (!draftProduct.find((d) => d.id === published.id)) {
+          await deleteProductCategory(published.id)
+        }
+      }
+
+      // アイテムの同期
+      for (const draft of draftItems) {
+        const published = publishedItems.find((p) => p.id === draft.id)
+        if (!published) {
+          await createItem({
+            shop_id: draft.shop_id,
+            product_category_id: draft.product_category_id,
+            name: draft.name,
+            price: draft.price,
+            description: draft.description || undefined,
+            is_required: draft.is_required,
+            auto_select: draft.auto_select,
+          })
+        } else if (JSON.stringify(published) !== JSON.stringify(draft)) {
+          await updateItem(draft.id, {
+            name: draft.name,
+            price: draft.price,
+            description: draft.description || undefined,
+            is_required: draft.is_required,
+            auto_select: draft.auto_select,
+          })
+        }
+      }
+
+      // 削除されたアイテム
+      for (const published of publishedItems) {
+        if (!draftItems.find((d) => d.id === published.id)) {
+          await deleteItem(published.id)
+        }
+      }
+
+      // 再読み込み
+      await loadData()
+      if (selectedProduct) {
+        await loadItems()
+      }
+      setHasChanges(false)
+      alert('変更を保存しました')
+    } catch (err) {
+      console.error('保存に失敗しました:', err)
+      alert(getErrorMessage(err))
+    }
+  }
+
+  // 下書きを破棄して本番データに戻す
+  const handleDiscard = () => {
+    if (!confirm('編集中の変更を破棄しますか？')) return
+    setDraftShooting(publishedShooting)
+    setDraftProduct(publishedProduct)
+    setDraftItems(publishedItems)
+    setHasChanges(false)
+    resetForm()
+  }
+
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">カテゴリ・アイテム管理</h2>
-        <p className="text-sm text-gray-600 mt-1">撮影カテゴリ → 商品カテゴリ → アイテムの3階層を管理</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">カテゴリ・アイテム管理</h2>
+          <p className="text-sm text-gray-600 mt-1">撮影カテゴリ → 商品カテゴリ → アイテムの3階層を管理</p>
+        </div>
+        {/* 更新・破棄ボタン */}
+        {hasChanges && (
+          <div className="flex gap-3">
+            <button
+              onClick={handleDiscard}
+              className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+            >
+              変更を破棄
+            </button>
+            <button
+              onClick={handlePublish}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-md"
+            >
+              更新（本番に反映）
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* 変更通知バナー */}
+      {hasChanges && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-yellow-800">
+            ⚠️ 未保存の変更があります。「更新」ボタンを押すまで変更は保存されません。
+          </p>
+        </div>
+      )}
 
       {/* タブ */}
       <div className="border-b border-gray-200">
@@ -378,7 +559,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">撮影カテゴリ一覧</h3>
             <div className="space-y-2">
-              {shootingCategories.map((category) => (
+              {draftShooting.map((category) => (
                 <div
                   key={category.id}
                   className="border rounded-lg p-4 border-gray-200"
@@ -470,6 +651,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
                   rows={3}
                 />
               </div>
+
               <div className="flex gap-2">
                 {editingProductId ? (
                   <>
@@ -504,7 +686,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">商品カテゴリ一覧</h3>
             <div className="space-y-2">
-              {productCategories.map((category) => (
+              {draftProduct.map((category) => (
                 <div key={category.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -540,7 +722,7 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">商品カテゴリ</h3>
             <div className="space-y-2">
-              {productCategories.map((category) => (
+              {draftProduct.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedProduct(category.id)}
@@ -649,11 +831,13 @@ export default function CategoryManager({ shopId }: CategoryManagerProps) {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">アイテム一覧</h3>
             {!selectedProduct ? (
               <p className="text-gray-500 text-sm">商品カテゴリを選択してください</p>
-            ) : items.length === 0 ? (
+            ) : draftItems.filter((i) => i.product_category_id === selectedProduct).length === 0 ? (
               <p className="text-gray-500 text-sm">アイテムがまだありません</p>
             ) : (
               <div className="space-y-2">
-                {items.map((item) => (
+                {draftItems
+                  .filter((i) => i.product_category_id === selectedProduct)
+                  .map((item) => (
                   <div key={item.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">

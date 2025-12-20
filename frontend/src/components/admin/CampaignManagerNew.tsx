@@ -16,13 +16,15 @@ import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface CampaignManagerProps {
   shopId: number
+  onHasChanges?: (hasChanges: boolean) => void
 }
 
-export default function CampaignManager({ shopId }: CampaignManagerProps) {
+export default function CampaignManager({ shopId, onHasChanges }: CampaignManagerProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
   const [editingCampaignId, setEditingCampaignId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
 
   // フォーム値
   const [formName, setFormName] = useState('')
@@ -40,6 +42,11 @@ export default function CampaignManager({ shopId }: CampaignManagerProps) {
   // トグル状態
   const [expandedShooting, setExpandedShooting] = useState<Set<number>>(new Set())
   const [expandedProduct, setExpandedProduct] = useState<Set<number>>(new Set())
+
+  // 変更通知
+  useEffect(() => {
+    onHasChanges?.(hasChanges)
+  }, [hasChanges, onHasChanges])
 
   useEffect(() => {
     loadData()
@@ -70,6 +77,7 @@ export default function CampaignManager({ shopId }: CampaignManagerProps) {
     setSelectedItemIds([])
     setEditingCampaignId(null)
     setShowForm(false)
+    setHasChanges(false)
   }
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
@@ -141,6 +149,7 @@ export default function CampaignManager({ shopId }: CampaignManagerProps) {
       setSelectedProductIds(campaign.associations.product_category_ids)
       setSelectedItemIds(campaign.associations.item_ids)
       setShowForm(true)
+      setHasChanges(true)
     } catch (err) {
       console.error(err)
       alert(getErrorMessage(err))
@@ -207,6 +216,7 @@ export default function CampaignManager({ shopId }: CampaignManagerProps) {
             onClick={() => {
               resetForm()
               setShowForm(true)
+              setHasChanges(true)
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
           >
@@ -214,6 +224,15 @@ export default function CampaignManager({ shopId }: CampaignManagerProps) {
           </button>
         )}
       </div>
+
+      {/* 変更通知バナー */}
+      {hasChanges && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-yellow-800">
+            ⚠️ 未保存の変更があります。フォームを送信するか、キャンセルしてください。
+          </p>
+        </div>
+      )}
 
       {/* フォーム */}
       {showForm && (

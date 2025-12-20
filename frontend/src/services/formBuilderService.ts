@@ -76,6 +76,80 @@ export async function deleteFormSchema(id: number): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * フォームを公開する（statusをpublishedに変更 + form_blocks を published_blocks にコピー）
+ */
+export async function publishFormSchema(id: number): Promise<FormSchema> {
+  // 1. 既存の公開済みブロックを削除
+  const { error: deleteError } = await supabase
+    .from('published_blocks')
+    .delete()
+    .eq('form_schema_id', id)
+
+  if (deleteError) throw deleteError
+
+  // 2. 現在のform_blocksを取得
+  const { data: currentBlocks, error: blocksError } = await supabase
+    .from('form_blocks')
+    .select('*')
+    .eq('form_schema_id', id)
+    .order('sort_order', { ascending: true })
+
+  if (blocksError) throw blocksError
+
+  // 3. published_blocksにコピー
+  if (currentBlocks && currentBlocks.length > 0) {
+    const publishedBlocks = currentBlocks.map(block => ({
+      form_schema_id: block.form_schema_id,
+      block_type: block.block_type,
+      content: block.content,
+      sort_order: block.sort_order,
+      metadata: block.metadata,
+      show_condition: block.show_condition,
+      published_at: new Date().toISOString()
+    }))
+
+    const { error: insertError } = await supabase
+      .from('published_blocks')
+      .insert(publishedBlocks)
+
+    if (insertError) throw insertError
+  }
+
+  // 4. フォームステータスをpublishedに更新
+  const { data, error } = await supabase
+    .from('form_schemas')
+    .update({
+      status: 'published',
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * フォームを下書きに戻す（statusをdraftに変更）
+ */
+export async function unpublishFormSchema(id: number): Promise<FormSchema> {
+  const { data, error } = await supabase
+    .from('form_schemas')
+    .update({
+      status: 'draft',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 // ==================== FormField CRUD ====================
 
 export async function getFormFields(formSchemaId: number): Promise<FormField[]> {
@@ -329,19 +403,20 @@ export async function duplicateFormSchema(sourceId: number, shopId: number): Pro
 // ==================== ブロックベースのフォームAPI ====================
 
 /**
- * 撮影カテゴリIDでフォームを取得（ブロック情報含む）
+ * 撮影カテゴリIDでフォームを取得（エンドユーザー向け・公開済みブロックのみ）
  */
 export async function getFormByShootingCategory(
   shopId: number,
   shootingCategoryId: number
 ): Promise<FormSchemaWithBlocks | null> {
-  // form_schemasテーブルからshooting_category_idで検索
+  // form_schemasテーブルからshooting_category_idで検索（公開済みのみ）
   const { data: formData, error: formError } = await supabase
     .from('form_schemas')
     .select('*')
     .eq('shop_id', shopId)
     .eq('shooting_category_id', shootingCategoryId)
     .eq('is_active', true)
+    .eq('status', 'published')
     .single()
 
   if (formError) {
@@ -354,9 +429,9 @@ export async function getFormByShootingCategory(
 
   if (!formData) return null
 
-  // ブロックを取得
-  const { data: blocksData, error: blocksError } = await supabase
-    .from('form_blocks')
+  // 公開済みブロックを取得（published_blocks テーブルから）
+  const { data: publishedBlocksData, error: blocksError } = await supabase
+    .from('published_blocks')
     .select('*')
     .eq('form_schema_id', formData.id)
     .order('sort_order', { ascending: true })
@@ -366,7 +441,7 @@ export async function getFormByShootingCategory(
   return {
     ...formData,
     shooting_category_id: formData.shooting_category_id || null,
-    blocks: blocksData || [],
+    blocks: publishedBlocksData || [],
   }
 }
 
@@ -464,4 +539,35 @@ export async function updateBlocksOrder(blockIds: number[]): Promise<void> {
   )
 
   await Promise.all(updates)
+}
+
+/**
+ * フォームブロックを一括保存（トランザクション）
+ * PostgreSQL関数を使用して、全削除→全挿入を原子的に実行
+ */
+export async function saveFormBlocks(
+  formId: number,
+  blocks: Array<{
+    block_type: BlockType
+    content?: string | null
+    sort_order: number
+    metadata?: any
+    show_condition?: ShowCondition | null
+  }>
+): Promise<void> {
+  // ブロックデータをJSONB形式に変換
+  const blocksJson = blocks.map(block => ({
+    block_type: block.block_type,
+    content: block.content || null,
+    sort_order: block.sort_order,
+    metadata: block.metadata || {},
+    show_condition: block.show_condition || null,
+  }))
+
+  const { error } = await supabase.rpc('save_form_blocks', {
+    p_form_id: formId,
+    p_blocks: blocksJson as any,
+  })
+
+  if (error) throw error
 }

@@ -24,6 +24,11 @@ export interface ProductCategory {
   is_active: boolean
   created_at: string
   updated_at: string
+
+  // v3フィールド（オプショナル）
+  form_section?: 'trigger' | 'conditional' | 'common_final' | null
+  product_type?: 'plan' | 'option_single' | 'option_multi' | null
+  conditional_rule?: any | null
 }
 
 // 撮影カテゴリと商品カテゴリの関連（shooting_product_associations テーブル）
@@ -70,6 +75,11 @@ export interface CreateProductCategory {
   description?: string
   sort_order?: number
   is_active?: boolean
+
+  // v3フィールド
+  form_section?: 'trigger' | 'conditional' | 'common_final' | null
+  product_type?: 'plan' | 'option_single' | 'option_multi' | null
+  conditional_rule?: any | null
 }
 
 export interface CreateItem {
@@ -111,6 +121,11 @@ export interface UpdateProductCategory {
   description?: string
   sort_order?: number
   is_active?: boolean
+
+  // v3フィールド
+  form_section?: 'trigger' | 'conditional' | 'common_final' | null
+  product_type?: 'plan' | 'option_single' | 'option_multi' | null
+  conditional_rule?: any | null
 }
 
 export interface UpdateItem {

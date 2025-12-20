@@ -12,45 +12,71 @@
 - レスポンシブデザイン対応
 
 ### 管理画面
-- プラン管理（CRUD）
-- オプション管理（CRUD）
-- キャンペーン管理（CRUD）
+- フォームビルダー（ノードビュー/リストビュー）
+- カテゴリ管理（撮影カテゴリ・商品カテゴリ・アイテム）
+- ドラッグ＆ドロップによる条件分岐設定
+- プレビュー機能
+- 保存/更新機能（draft/published分離）
 - Supabase Authによる認証
 - 店舗別データ管理（RLS対応）
 
+### 開発者向け機能
+- **自動ログ収集**: すべてのconsoleログを自動収集（errorReporter）
+- **GitHub Actions**: 自動デプロイ＆auto-merge（リトライロジック付き）
+- **診断ツール**: データベース状態確認スクリプト
+- **E2Eテスト**: Playwright環境セットアップスクリプト
+
 ## 🏗️ 技術スタック
 
-- **フロントエンド**: React 18 + TypeScript + Vite + Tailwind CSS
-- **バックエンド**: Node.js + Express + TypeScript
+- **フロントエンド**: React 18 + TypeScript + Vite + Tailwind CSS + React Flow
 - **データベース**: Supabase (PostgreSQL)
 - **認証**: Supabase Auth
-- **ホスティング**: Xサーバー / Vercel / Netlify
+- **CI/CD**: GitHub Actions（自動デプロイ＆auto-merge）
+- **ホスティング**: GitHub Pages
+- **テスト**: Playwright（E2E）
+- **監視**: errorReporter（自動ログ収集）
 
 ## 📁 プロジェクト構造
 
 ```
 Photo-Studio-Pricing-Simulator/
-├── frontend/               # フロントエンドアプリケーション
+├── frontend/                          # フロントエンドアプリケーション
 │   ├── src/
-│   │   ├── components/    # Reactコンポーネント
-│   │   ├── pages/         # ページコンポーネント
-│   │   ├── contexts/      # Context API
-│   │   ├── lib/           # Supabaseクライアント
-│   │   ├── types/         # TypeScript型定義
-│   │   └── utils/         # ユーティリティ関数
+│   │   ├── components/
+│   │   │   ├── admin/                # 管理画面コンポーネント
+│   │   │   │   ├── FormNodeViewPage.tsx  # ノードビュー
+│   │   │   │   ├── FormManager.tsx       # フォーム管理
+│   │   │   │   └── CategoryManager.tsx   # カテゴリ管理
+│   │   │   └── SimulatorNew.tsx      # 顧客向けシミュレーター
+│   │   ├── pages/                    # ページコンポーネント
+│   │   ├── services/                 # API通信サービス
+│   │   ├── utils/
+│   │   │   ├── logger.ts             # ログ出力ユーティリティ
+│   │   │   └── errorReporter.ts      # 自動ログ収集システム
+│   │   ├── types/                    # TypeScript型定義
+│   │   └── lib/                      # Supabaseクライアント
 │   └── package.json
 │
-├── backend/               # バックエンドAPI
-│   ├── src/
-│   │   ├── routes/       # APIルート
-│   │   ├── middleware/   # 認証ミドルウェア
-│   │   └── lib/          # Supabase設定
-│   └── package.json
+├── supabase/                         # データベース
+│   └── migrations/                   # マイグレーションスクリプト
+│       ├── 015_create_published_blocks.sql
+│       └── 016_create_save_form_blocks_function.sql
 │
-└── database/             # データベーススキーマ
-    ├── schema.sql        # テーブル定義
-    ├── rls_policies.sql  # RLSポリシー
-    └── sample_data.sql   # サンプルデータ
+├── scripts/                          # 開発支援スクリプト
+│   ├── diagnose.sql                  # データベース診断
+│   └── setup-e2e-tests.sh            # E2Eテスト環境セットアップ
+│
+├── .github/workflows/                # GitHub Actions
+│   ├── deploy.yml                    # 自動デプロイ
+│   └── auto-merge.yml                # PR自動マージ
+│
+├── .claude/                          # 開発ドキュメント
+│   ├── DEVELOPMENT_GUIDELINES.md     # 開発ガイドライン
+│   └── DEVELOPMENT_LOG.md            # 開発ログ
+│
+├── TROUBLESHOOTING.md                # トラブルシューティング
+├── TEST_SCENARIO.md                  # テストシナリオ
+└── README.md                         # このファイル
 ```
 
 ## 🚀 セットアップ手順
@@ -243,6 +269,45 @@ MIT License
 - 本番環境では必ず環境変数を適切に設定してください
 - service_role keyは絶対にクライアント側に公開しないでください
 
+## 🐛 トラブルシューティング
+
+問題が発生した場合は、まず [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) を確認してください。
+
+### よくある問題
+
+#### ブロックの追加ができない / 更新が反映されない
+
+最も可能性が高い原因は**マイグレーションが未適用**です。
+
+1. Supabaseダッシュボード → SQL Editor
+2. `scripts/diagnose.sql` を実行して診断
+3. 必要に応じてマイグレーション015, 016を適用
+
+詳細: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
+#### エラーログの確認
+
+すべてのコンソールログは自動的に収集されています：
+
+```javascript
+// ブラウザのコンソールで実行
+window.errorReporter.getLogs()           // ログ一覧を表示
+window.errorReporter.downloadReport()    // JSONでダウンロード
+```
+
+詳細: [TROUBLESHOOTING.md - エラー追跡システム](./TROUBLESHOOTING.md#-自動エラー追跡システム-errorreporter)
+
+## 📚 ドキュメント
+
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - トラブルシューティングガイド
+- [TEST_SCENARIO.md](./TEST_SCENARIO.md) - テストシナリオ
+- [.claude/DEVELOPMENT_GUIDELINES.md](./.claude/DEVELOPMENT_GUIDELINES.md) - 開発ガイドライン
+- [.claude/DEVELOPMENT_LOG.md](./.claude/DEVELOPMENT_LOG.md) - 開発ログ
+
 ## 📮 サポート
 
-問題が発生した場合は、GitHubのIssuesで報告してください。
+問題が発生した場合：
+
+1. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) を確認
+2. `window.errorReporter.downloadReport()` でエラーレポートをダウンロード
+3. GitHubのIssuesで報告（エラーレポートを添付）
