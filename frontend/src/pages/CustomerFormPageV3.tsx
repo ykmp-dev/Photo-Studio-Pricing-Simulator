@@ -15,7 +15,9 @@ import ProductCategorySection from '../components/customer/ProductCategorySectio
  * パターンB: Triggerなし（すぐに全商品選択）
  */
 export default function CustomerFormPageV3() {
-  const { shopId } = useParams<{ shopId: string }>()
+  const { shopId: shopIdParam } = useParams<{ shopId: string }>()
+  // URLパラメータがない場合は環境変数から取得
+  const shopId = shopIdParam || import.meta.env.VITE_SHOP_ID
 
   const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
   const [selectedShootingCategoryId, setSelectedShootingCategoryId] = useState<number | null>(null)

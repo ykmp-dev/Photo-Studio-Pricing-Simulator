@@ -34,7 +34,7 @@ function App() {
       <Router basename={basename}>
         <RedirectHandler />
         <Routes>
-          <Route path="/" element={<SimulatorPage />} />
+          <Route path="/" element={<CustomerFormPageV3 />} />
           <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="/form/v3/:shopId" element={<CustomerFormPageV3 />} />
           <Route path="/admin" element={<AdminPage />} />
