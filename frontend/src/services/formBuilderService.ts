@@ -19,6 +19,7 @@ import type {
   BlockType,
   ShowCondition,
 } from '../types/formBuilder'
+import type { FormBuilderData, ShootingCategoryForm } from '../types/formBuilderV3'
 
 // ==================== FormSchema CRUD ====================
 
@@ -568,6 +569,117 @@ export async function saveFormBlocks(
     p_form_id: formId,
     p_blocks: blocksJson as any,
   })
+
+  if (error) throw error
+}
+
+// ==================== FormBuilder V3 API ====================
+
+/**
+ * フォームビルダーデータを保存
+ */
+export async function saveFormBuilderData(
+  formData: FormBuilderData
+): Promise<ShootingCategoryForm> {
+  if (!formData.shopId || formData.shopId === 0) {
+    throw new Error('shopId is required')
+  }
+  if (!formData.shootingCategoryId || formData.shootingCategoryId === 0) {
+    throw new Error('shootingCategoryId is required')
+  }
+
+  const { data, error } = await supabase
+    .from('shooting_category_forms')
+    .insert({
+      shop_id: formData.shopId,
+      shooting_category_id: formData.shootingCategoryId,
+      form_data: formData,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to save form builder data')
+
+  return data
+}
+
+/**
+ * フォームビルダーデータをIDで取得
+ */
+export async function loadFormBuilderData(id: number): Promise<ShootingCategoryForm | null> {
+  const { data, error } = await supabase
+    .from('shooting_category_forms')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Not found
+      return null
+    }
+    throw error
+  }
+
+  return data
+}
+
+/**
+ * 撮影カテゴリIDでフォームビルダーデータを取得
+ */
+export async function getFormBuilderDataByShootingCategory(
+  shopId: number,
+  shootingCategoryId: number
+): Promise<ShootingCategoryForm | null> {
+  const { data, error } = await supabase
+    .from('shooting_category_forms')
+    .select('*')
+    .eq('shop_id', shopId)
+    .eq('shooting_category_id', shootingCategoryId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Not found
+      return null
+    }
+    throw error
+  }
+
+  return data
+}
+
+/**
+ * フォームビルダーデータを更新
+ */
+export async function updateFormBuilderData(
+  id: number,
+  formData: FormBuilderData
+): Promise<ShootingCategoryForm> {
+  const { data, error } = await supabase
+    .from('shooting_category_forms')
+    .update({
+      form_data: formData,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Form builder data not found')
+
+  return data
+}
+
+/**
+ * フォームビルダーデータを削除
+ */
+export async function deleteFormBuilderData(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('shooting_category_forms')
+    .delete()
+    .eq('id', id)
 
   if (error) throw error
 }

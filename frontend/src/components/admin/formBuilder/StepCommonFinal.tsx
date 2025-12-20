@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormBuilderData, FormBuilderCategory } from '../../../types/formBuilderV3'
 import type { ProductCategory, Item } from '../../../types/category'
-import { addCommonFinalStep } from '../../../utils/formBuilderLogic'
+import { addCommonFinalStep, removeStep } from '../../../utils/formBuilderLogic'
 import { productTypeLabels } from '../../../utils/labelConverter'
 import { getProductCategories, getItems } from '../../../services/categoryService'
 
@@ -108,6 +108,21 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
     setItems([])
   }
 
+  const handleDelete = (stepIndex: number) => {
+    if (!confirm('この項目を削除しますか？')) return
+
+    // 実際のsteps配列内のインデックスを見つける
+    const commonFinalStepsWithIndex = formData.steps
+      .map((step, idx) => ({ step, idx }))
+      .filter(({ step }) => step.type === 'common_final')
+
+    const actualIndex = commonFinalStepsWithIndex[stepIndex]?.idx
+    if (actualIndex !== undefined) {
+      const updatedFormData = removeStep(formData, actualIndex)
+      onUpdate(updatedFormData)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 既存のcommon_final項目一覧 */}
@@ -124,6 +139,13 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
                     {productTypeLabels[step.category.productType]} / {step.category.items.length}個の選択肢
                   </div>
                 </div>
+                <button
+                  onClick={() => handleDelete(index)}
+                  className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                  title="削除"
+                >
+                  削除
+                </button>
               </div>
             ))}
           </div>

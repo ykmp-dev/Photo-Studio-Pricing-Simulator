@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormBuilderData, FormBuilderCategory } from '../../../types/formBuilderV3'
 import type { ProductCategory, Item } from '../../../types/category'
-import { addTriggerStep } from '../../../utils/formBuilderLogic'
+import { addTriggerStep, removeStep } from '../../../utils/formBuilderLogic'
 import { productTypeLabels } from '../../../utils/labelConverter'
 import { getProductCategories, getItems } from '../../../services/categoryService'
 
@@ -107,6 +107,21 @@ export default function StepTrigger({ formData, onUpdate, onNext }: StepTriggerP
     setItems([])
   }
 
+  const handleDelete = (stepIndex: number) => {
+    if (!confirm('この項目を削除しますか？')) return
+
+    // 実際のsteps配列内のインデックスを見つける
+    const triggerSteps = formData.steps
+      .map((step, idx) => ({ step, idx }))
+      .filter(({ step }) => step.type === 'trigger')
+
+    const actualIndex = triggerSteps[stepIndex]?.idx
+    if (actualIndex !== undefined) {
+      const updatedFormData = removeStep(formData, actualIndex)
+      onUpdate(updatedFormData)
+    }
+  }
+
   // 既存のtrigger項目
   const existingTriggers = formData.steps.filter((s) => s.type === 'trigger')
 
@@ -126,6 +141,13 @@ export default function StepTrigger({ formData, onUpdate, onNext }: StepTriggerP
                     {productTypeLabels[step.category.productType]} / {step.category.items.length}個の選択肢
                   </div>
                 </div>
+                <button
+                  onClick={() => handleDelete(index)}
+                  className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                  title="削除"
+                >
+                  削除
+                </button>
               </div>
             ))}
           </div>

@@ -38,4 +38,16 @@ export interface FormBuilderData {
   steps: FormBuilderStep[]
 }
 
+/**
+ * データベース保存用の型
+ */
+export interface ShootingCategoryForm {
+  id: number
+  shop_id: number
+  shooting_category_id: number
+  form_data: FormBuilderData
+  created_at: string
+  updated_at: string
+}
+
 export type WizardStep = 'select_shooting' | 'add_trigger' | 'add_conditional' | 'add_common_final' | 'preview'

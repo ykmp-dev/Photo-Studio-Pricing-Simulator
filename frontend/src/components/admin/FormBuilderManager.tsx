@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react'
 import { getShootingCategories } from '../../services/categoryService'
+import {
+  getFormBuilderDataByShootingCategory,
+  saveFormBuilderData,
+  updateFormBuilderData
+} from '../../services/formBuilderService'
 import type { ShootingCategory } from '../../types/category'
 import type { FormBuilderData } from '../../types/formBuilderV3'
 import FormBuilderWizard from './formBuilder/FormBuilderWizard'
@@ -18,6 +23,9 @@ export default function FormBuilderManager({ shopId, onHasChanges }: FormBuilder
 
   // 下書きデータ（編集中のフォーム）
   const [draftForms, setDraftForms] = useState<FormBuilderData[]>([])
+
+  // データベースレコードのIDマッピング（shootingCategoryId → record id）
+  const [formRecordIds, setFormRecordIds] = useState<Map<number, number>>(new Map())
 
   // 変更フラグ
   const [hasChanges, setHasChanges] = useState(false)
@@ -42,10 +50,21 @@ export default function FormBuilderManager({ shopId, onHasChanges }: FormBuilder
       const categories = await getShootingCategories(shopId)
       setShootingCategories(categories)
 
-      // TODO: フォームデータの読み込み（APIエンドポイント実装後）
-      // const forms = await getFormBuilderData(shopId)
-      // setPublishedForms(forms)
-      // setDraftForms(forms)
+      // フォームデータの読み込み
+      const loadedForms: FormBuilderData[] = []
+      const recordIds = new Map<number, number>()
+
+      for (const category of categories) {
+        const formRecord = await getFormBuilderDataByShootingCategory(shopId, category.id)
+        if (formRecord) {
+          loadedForms.push(formRecord.form_data)
+          recordIds.set(category.id, formRecord.id)
+        }
+      }
+
+      setPublishedForms(loadedForms)
+      setDraftForms(loadedForms)
+      setFormRecordIds(recordIds)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
     }
@@ -86,12 +105,22 @@ export default function FormBuilderManager({ shopId, onHasChanges }: FormBuilder
     if (!confirm('変更を保存しますか？')) return
 
     try {
-      // TODO: データベースへの保存処理
-      // for (const draft of draftForms) {
-      //   await saveFormBuilderData(draft)
-      // }
+      const updatedRecordIds = new Map(formRecordIds)
 
-      // 仮実装: 下書きを本番にコピー
+      for (const draft of draftForms) {
+        const recordId = formRecordIds.get(draft.shootingCategoryId)
+
+        if (recordId) {
+          // 既存レコードを更新
+          await updateFormBuilderData(recordId, draft)
+        } else {
+          // 新規レコードを作成
+          const newRecord = await saveFormBuilderData(draft)
+          updatedRecordIds.set(draft.shootingCategoryId, newRecord.id)
+        }
+      }
+
+      setFormRecordIds(updatedRecordIds)
       setPublishedForms([...draftForms])
       setHasChanges(false)
       alert('変更を保存しました')
