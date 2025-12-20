@@ -376,3 +376,228 @@ const priceCalculation = useMemo(() => {
 ---
 
 _このログは常に最新の情報で更新してください。_
+
+---
+
+## 2025-12-20: GitHub Actions修正 & エラーレポート機能追加
+
+**セッションID**: `01BmvtLhyedN4MCeLRHfWDFK` (継続セッション)
+**ブランチ**: `claude/tax-inclusive-pricing-01BmvtLhyedN4MCeLRHfWDFK`
+**担当**: Claude Code
+
+### 作業概要
+
+1. ノードビューUI完成（前回からの継続）
+2. 横浜そごう写真館CSVデータ作成
+3. GitHub Actionsタイムアウトエラー修正
+4. errorReporter（コンソールログ自動収集）実装
+5. セッション開始ガイド（SESSION_START.md）作成
+
+### 実施した作業
+
+#### 1. ノードビューUI完成 ✅
+
+**実装内容**:
+- `FormBuilderCanvas.tsx`: React Flow ノードビューエディタ
+  - 自動階層レイアウトアルゴリズム（条件分岐で横に広がる）
+  - バリデーション機能（到達不可能・循環参照検出）
+  - リアルタイム警告パネル
+- `BlockEditModal.tsx`: 全ブロックタイプ対応の編集モーダル
+  - Choice block の手動入力/カテゴリ連動モード
+  - 表示方式選択（ラジオ/ドロップダウン/自動判定）
+- `FormBlockNode.tsx`: カスタムノードコンポーネント
+  - ブロックタイプ別の視覚的区別
+  - エラーノードの強調表示（赤枠/橙枠）
+
+**バリデーション仕様**:
+```typescript
+// 到達不可能ノード検出（DFS探索）
+validateBlocks() {
+  - ルートノード（show_conditionなし）から探索
+  - 到達できないノード → 赤枠で表示
+  - 循環参照ノード → 橙枠で表示
+}
+```
+
+**コミット**: `93293dc` - "feat: ノードビューの編集機能とバリデーションを実装"
+
+#### 2. 横浜そごう写真館CSVデータ作成 ✅
+
+**作成ファイル**:
+- `data_import/shooting_categories.csv` (8件)
+  - 七五三、成人式、お宮参り、卒業・入学、家族写真、お見合い、証明写真、オーディション
+- `data_import/product_categories.csv` (10件)
+  - ヘアセット、メイク、着付け、アルバム、プリント・台紙、データ、追加撮影、レタッチ、衣装レンタル、小物
+- `data_import/items.csv` (68件)
+  - 横浜そごう写真館の実価格を反映
+    - ヘアメイク（女性）: ¥7,700
+    - ヘアメイク（男性）: ¥6,600
+    - 全データ50カット: ¥68,200
+    - 追加ポーズ: ¥11,000
+    - 振袖着付け: ¥11,000
+    - 未就学児追加料金: ¥1,100
+- `data_import/README.md`
+  - インポート手順とデータ説明
+
+**参考情報源**:
+- [横浜そごう写真館公式サイト](https://www.watanabephoto.co.jp/y_sogo/)
+- [七五三撮影プラン](https://www.watanabephoto.co.jp/y_sogo/menu/anniversary/753/)
+
+**コミット**: `e039f96` - "feat: 横浜そごう写真館データのCSVインポートファイルを追加"
+
+#### 3. GitHub Actions タイムアウトエラー修正 ✅
+
+**問題**:
+```
+Post "https://api.github.com/graphql": dial tcp 140.82.116.6:443: i/o timeout
+```
+別ブランチ `claude/node-view-dedicated-page-cKRID` でGitHub APIへの接続がタイムアウト
+
+**解決策**:
+`.github/workflows/auto-merge.yml` にリトライロジック追加:
+
+```bash
+retry_command() {
+  local max_attempts=3
+  local timeout=30
+  local attempt=1
+  local sleep_time=5
+
+  while [ $attempt -le $max_attempts ]; do
+    if timeout $timeout "$@"; then
+      return 0
+    fi
+
+    # 指数バックオフ（5秒 → 10秒 → 20秒）
+    sleep $sleep_time
+    sleep_time=$((sleep_time * 2))
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+```
+
+**適用対象**:
+- `gh pr list` - 既存PR確認
+- `gh pr create` - PR作成
+- `gh pr view` - マージ可能性チェック
+- `gh pr merge` - マージ実行
+
+**効果**: 一時的なネットワーク問題でワークフローが失敗しなくなる
+
+**コミット**: `d9819dd` - "fix: GitHub Actions auto-mergeのタイムアウトエラーを修正"
+
+#### 4. errorReporter 実装 ✅
+
+**目的**: 開発環境でのデバッグ支援とエラー追跡
+
+**実装内容**:
+- `frontend/src/utils/errorReporter.ts` (256行)
+  - コンソールログの自動インターセプト（開発環境のみ）
+  - グローバルエラーハンドラ（window.error）
+  - Promise unhandledrejection ハンドラ
+  - ローカルストレージへの自動保存（最大100件）
+  - セッションID管理
+  - 手動レポートダウンロード機能
+- `frontend/src/main.tsx` に import 追加
+
+**開発/本番の切り替え**:
+```typescript
+// 開発環境（DEV）: 全てのconsole.logを収集
+if (import.meta.env.DEV) {
+  this.setupConsoleInterceptor()
+}
+
+// 本番環境: エラーのみ収集
+this.setupErrorHandlers() // 常に有効
+```
+
+**使い方**:
+```javascript
+// ブラウザコンソールで
+window.errorReporter.getLogs()           // ログ確認
+window.errorReporter.downloadReport()    // JSON形式でダウンロード
+window.errorReporter.clearLogs()         // ログクリア
+```
+
+**将来の拡張**:
+- バックエンドAPIを実装すればサーバーへの自動送信可能
+- 現在は暫定的にlocalStorageに保存
+
+**コミット**: `1a84455` - "feat: コンソールログ自動収集機能（errorReporter）を実装"
+
+#### 5. SESSION_START.md 作成 ✅
+
+**目的**: 新しいセッション開始時の引き継ぎを改善
+
+**内容**:
+- セッション開始時のクイックチェックリスト
+- 最初に読むべきファイルの順序
+  1. SESSION_START.md（このファイル）
+  2. DEVELOPMENT_GUIDELINES.md
+  3. DEVELOPMENT_LOG.md
+  4. HANDOFF.md（存在する場合）
+- プロジェクト概要
+- 重要な開発方針（スマホ優先、税込のみ、デバッグログ削除）
+- データ構造の説明
+- トラブルシューティング
+- 複数セッション開発の注意事項
+
+**効果**:
+- Claude Codeの新しいセッションが開始されたときに、何を確認すべきか明確になる
+- 再セッションでガイドラインを忘れる問題を軽減
+
+### コミット履歴
+
+```bash
+1a84455 feat: コンソールログ自動収集機能（errorReporter）を実装
+d9819dd fix: GitHub Actions auto-mergeのタイムアウトエラーを修正
+e039f96 feat: 横浜そごう写真館データのCSVインポートファイルを追加
+93293dc feat: ノードビューの編集機能とバリデーションを実装
+57496cc feat: ノードビューUIと横浜そごう写真館CSVデータを追加
+```
+
+### 解決済みの課題
+
+1. **GitHub Actions タイムアウト** ✅
+   - リトライロジック実装で解決
+   - 指数バックオフで安定性向上
+
+2. **ノードビューの完成** ✅
+   - 編集モーダル、自動レイアウト、バリデーション完成
+   - Choice block の高度な編集機能対応
+
+3. **セッション引き継ぎ問題** ✅
+   - SESSION_START.md作成で改善
+   - 次回セッションから効果を発揮
+
+### 残タスク
+
+1. **FormManager での Choice ブロック管理UI**
+   - BlockEditModalは完成済み
+   - FormManager側のUIも実装済み（要確認）
+
+2. **CSVインポート機能のテスト**
+   - 管理画面からCSVインポートして動作確認
+   - 横浜そごう写真館データで実際のフォーム作成
+
+3. **開発ガイドラインに従ったデバッグログ削除**
+   - 本番デプロイ前にconsole.logを全削除
+   - errorReporterは開発環境のみ動作なのでOK
+
+### 次回セッション用の指示
+
+**新しいセッションを開始したら**:
+1. `.claude/SESSION_START.md` を最初に読む
+2. チェックリストに従って環境確認
+3. DEVELOPMENT_LOG.md でこのエントリを確認
+4. 残タスクから作業を継続
+
+**重要な注意事項**:
+- errorReporterは開発環境のみconsole.logを収集
+- 本番環境ではエラーのみ収集（ガイドライン準拠）
+- デプロイ前にデバッグログがないか最終確認
+
+---
+
