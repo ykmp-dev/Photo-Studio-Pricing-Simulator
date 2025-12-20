@@ -117,6 +117,14 @@ export default function CustomerFormPageV3() {
   // 表示すべきカテゴリをフィルタリング
   const visibleCategories = filterVisibleCategories(productCategories, formValues)
 
+  // デバッグ用ログ
+  useEffect(() => {
+    console.log('=== FormBuilder Debug ===')
+    console.log('formValues:', formValues)
+    console.log('productCategories:', productCategories)
+    console.log('visibleCategories:', visibleCategories)
+  }, [formValues, productCategories, visibleCategories])
+
   // Triggerセクションの存在確認
   const hasTrigger = hasTriggerSections(productCategories)
 
