@@ -9,6 +9,13 @@ const TABLE_LABELS: Record<TableType, string> = {
   items: 'アイテム',
 }
 
+// シンプルモードで使用するフィールド（最小限）
+const SIMPLE_FIELDS: Record<TableType, string[]> = {
+  shooting_categories: ['name', 'display_name', 'description', 'sort_order'],
+  product_categories: ['name', 'display_name', 'description', 'sort_order'],
+  items: ['product_category_id', 'name', 'price', 'description', 'sort_order'],
+}
+
 interface CSVManagerProps {
   onHasChanges?: (hasChanges: boolean) => void
 }
@@ -16,6 +23,7 @@ interface CSVManagerProps {
 export default function CSVManager({ onHasChanges }: CSVManagerProps) {
   const shopId = 1 // TODO: Get from context
   const [selectedTable, setSelectedTable] = useState<TableType>('product_categories')
+  const [simpleMode, setSimpleMode] = useState(true) // シンプルモード（デフォルトON）
   const [importing, setImporting] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [draftData, setDraftData] = useState<any[] | null>(null)
@@ -46,7 +54,7 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
       }
 
       // CSVに変換
-      const headers = Object.keys(data[0])
+      const headers = simpleMode ? SIMPLE_FIELDS[selectedTable] : Object.keys(data[0])
       const csvContent = [
         headers.join(','),
         ...data.map((row: any) =>
@@ -148,13 +156,55 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
     try {
       setImporting(true)
 
-      const { error } = await supabase
-        .from(selectedTable)
-        .upsert(draftData, { onConflict: 'id' })
+      // シンプルモードの場合、不足しているフィールドを補完
+      const dataToImport = draftData.map((row) => {
+        const completeRow = { ...row }
 
-      if (error) throw error
+        // shop_idが未設定の場合は自動設定
+        if (!completeRow.shop_id) {
+          completeRow.shop_id = shopId
+        }
 
-      alert(`${draftData.length}件のデータをインポートしました`)
+        // created_at, updated_atが未設定の場合は自動設定
+        if (!completeRow.created_at) {
+          completeRow.created_at = new Date().toISOString()
+        }
+        if (!completeRow.updated_at) {
+          completeRow.updated_at = new Date().toISOString()
+        }
+
+        // is_activeが未設定の場合はtrueに
+        if (completeRow.is_active === undefined) {
+          completeRow.is_active = true
+        }
+
+        // itemsの場合の追加フィールド
+        if (selectedTable === 'items') {
+          if (completeRow.is_required === undefined) completeRow.is_required = false
+          if (completeRow.auto_select === undefined) completeRow.auto_select = false
+        }
+
+        return completeRow
+      })
+
+      // IDがある場合はupsert、ない場合はinsert
+      const hasIds = dataToImport.every((row) => row.id)
+
+      if (hasIds) {
+        const { error } = await supabase
+          .from(selectedTable)
+          .upsert(dataToImport, { onConflict: 'id' })
+        if (error) throw error
+      } else {
+        // IDなしの場合、既存IDを削除してinsert
+        const dataWithoutIds = dataToImport.map(({ id, ...rest }) => rest)
+        const { error } = await supabase
+          .from(selectedTable)
+          .insert(dataWithoutIds)
+        if (error) throw error
+      }
+
+      alert(`${dataToImport.length}件のデータをインポートしました`)
       setDraftData(null)
       setHasChanges(false)
     } catch (err) {
@@ -241,20 +291,44 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
       )}
 
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            テーブルを選択
-          </label>
-          <select
-            value={selectedTable}
-            onChange={(e) => setSelectedTable(e.target.value as TableType)}
-            disabled={hasChanges}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-          >
-            {Object.entries(TABLE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+        <div className="mb-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              テーブルを選択
+            </label>
+            <select
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value as TableType)}
+              disabled={hasChanges}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              {Object.entries(TABLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* シンプルモード切り替え */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div>
+              <label className="block text-sm font-medium text-gray-800">
+                シンプルモード
+              </label>
+              <p className="text-xs text-gray-600 mt-1">
+                最小限のフィールド（{SIMPLE_FIELDS[selectedTable].join(', ')}）のみ使用
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={simpleMode}
+                onChange={(e) => setSimpleMode(e.target.checked)}
+                disabled={hasChanges}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -333,16 +407,44 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
 
           {/* CSV形式の説明 */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-800 mb-2">CSV形式</h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              {selectedTable === 'shooting_categories' && (
-                <p className="font-mono">id,shop_id,name,display_name,description,sort_order,is_active</p>
-              )}
-              {selectedTable === 'product_categories' && (
-                <p className="font-mono">id,shop_id,name,display_name,description,sort_order,is_active</p>
-              )}
-              {selectedTable === 'items' && (
-                <p className="font-mono">id,shop_id,product_category_id,name,price,description,sort_order,is_active,is_required,auto_select</p>
+            <h3 className="font-semibold text-gray-800 mb-2">
+              CSV形式 {simpleMode ? '(シンプルモード)' : '(完全モード)'}
+            </h3>
+            <div className="text-xs text-gray-600 space-y-2">
+              {simpleMode ? (
+                <>
+                  <p className="font-mono bg-white p-2 rounded border border-gray-200">
+                    {SIMPLE_FIELDS[selectedTable].join(',')}
+                  </p>
+                  <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                    <p className="font-medium text-blue-800 mb-1">📝 シンプルモードの特徴</p>
+                    <ul className="list-disc list-inside space-y-1 text-blue-700">
+                      <li>IDは自動採番（空欄でOK）</li>
+                      <li>shop_id, created_at, updated_atは自動設定</li>
+                      <li>is_activeは自動的にtrueに設定</li>
+                      <li>必要最小限のフィールドのみで簡単管理</li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {selectedTable === 'shooting_categories' && (
+                    <p className="font-mono bg-white p-2 rounded border border-gray-200">
+                      id,shop_id,name,display_name,description,sort_order,is_active,created_at,updated_at
+                    </p>
+                  )}
+                  {selectedTable === 'product_categories' && (
+                    <p className="font-mono bg-white p-2 rounded border border-gray-200">
+                      id,shop_id,name,display_name,description,sort_order,is_active,created_at,updated_at
+                    </p>
+                  )}
+                  {selectedTable === 'items' && (
+                    <p className="font-mono bg-white p-2 rounded border border-gray-200">
+                      id,shop_id,product_category_id,name,price,description,sort_order,is_active,is_required,auto_select,created_at,updated_at
+                    </p>
+                  )}
+                  <p className="text-gray-500 mt-2">※ すべてのフィールドを含む完全なCSV</p>
+                </>
               )}
             </div>
           </div>
