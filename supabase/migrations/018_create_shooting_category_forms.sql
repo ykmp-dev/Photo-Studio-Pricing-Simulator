@@ -37,26 +37,27 @@ CREATE TRIGGER trigger_update_shooting_category_forms_updated_at
 -- RLSポリシー
 ALTER TABLE shooting_category_forms ENABLE ROW LEVEL SECURITY;
 
--- 店舗のフォーム設定は店舗自身のみ閲覧・編集可能
-CREATE POLICY "Shops can view their own form configs"
+-- 認証されたユーザーは閲覧・編集可能
+CREATE POLICY "shooting_category_forms_select_policy"
   ON shooting_category_forms
-  FOR SELECT
-  USING (shop_id = auth.uid()::bigint);
+  FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY "Shops can insert their own form configs"
+CREATE POLICY "shooting_category_forms_insert_policy"
   ON shooting_category_forms
-  FOR INSERT
-  WITH CHECK (shop_id = auth.uid()::bigint);
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
 
-CREATE POLICY "Shops can update their own form configs"
+CREATE POLICY "shooting_category_forms_update_policy"
   ON shooting_category_forms
-  FOR UPDATE
-  USING (shop_id = auth.uid()::bigint);
+  FOR UPDATE TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
-CREATE POLICY "Shops can delete their own form configs"
+CREATE POLICY "shooting_category_forms_delete_policy"
   ON shooting_category_forms
-  FOR DELETE
-  USING (shop_id = auth.uid()::bigint);
+  FOR DELETE TO authenticated
+  USING (true);
 
 -- コメント追加
 COMMENT ON TABLE shooting_category_forms IS 'フォームビルダーで作成したフォーム設定（JSON保存）';
