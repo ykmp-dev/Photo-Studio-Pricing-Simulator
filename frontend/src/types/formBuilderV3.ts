@@ -32,6 +32,7 @@ export interface FormBuilderStep {
 }
 
 export interface FormBuilderData {
+  shopId: number
   shootingCategoryId: number
   shootingCategoryName: string
   steps: FormBuilderStep[]
