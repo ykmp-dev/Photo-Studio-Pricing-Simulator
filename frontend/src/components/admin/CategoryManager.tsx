@@ -263,6 +263,46 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setHasChanges(true)
   }
 
+  // 順序変更関数
+  const moveShooting = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= draftShooting.length) return
+
+    const newArray = [...draftShooting]
+    ;[newArray[index], newArray[newIndex]] = [newArray[newIndex], newArray[index]]
+
+    // sort_orderを再設定
+    const updatedArray = newArray.map((item, idx) => ({ ...item, sort_order: idx }))
+    setDraftShooting(updatedArray)
+    setHasChanges(true)
+  }
+
+  const moveProduct = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= draftProduct.length) return
+
+    const newArray = [...draftProduct]
+    ;[newArray[index], newArray[newIndex]] = [newArray[newIndex], newArray[index]]
+
+    // sort_orderを再設定
+    const updatedArray = newArray.map((item, idx) => ({ ...item, sort_order: idx }))
+    setDraftProduct(updatedArray)
+    setHasChanges(true)
+  }
+
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= draftItems.length) return
+
+    const newArray = [...draftItems]
+    ;[newArray[index], newArray[newIndex]] = [newArray[newIndex], newArray[index]]
+
+    // sort_orderを再設定
+    const updatedArray = newArray.map((item, idx) => ({ ...item, sort_order: idx }))
+    setDraftItems(updatedArray)
+    setHasChanges(true)
+  }
+
   const resetForm = () => {
     setFormName('')
     setFormDisplayName('')
@@ -318,6 +358,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             name: draft.name,
             display_name: draft.display_name,
             description: draft.description || undefined,
+            sort_order: draft.sort_order,
           })
         }
       }
@@ -344,6 +385,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             name: draft.name,
             display_name: draft.display_name,
             description: draft.description || undefined,
+            sort_order: draft.sort_order,
           })
         }
       }
@@ -375,6 +417,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             description: draft.description || undefined,
             is_required: draft.is_required,
             auto_select: draft.auto_select,
+            sort_order: draft.sort_order,
           })
         }
       }
@@ -559,15 +602,35 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">撮影カテゴリ一覧</h3>
             <div className="space-y-2">
-              {draftShooting.map((category) => (
+              {draftShooting.map((category, index) => (
                 <div
                   key={category.id}
                   className="border rounded-lg p-4 border-gray-200"
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
-                      <p className="text-sm text-gray-500">キー: {category.name}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => moveShooting(index, 'up')}
+                          disabled={index === 0}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="上に移動"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => moveShooting(index, 'down')}
+                          disabled={index === draftShooting.length - 1}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="下に移動"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
+                        <p className="text-sm text-gray-500">キー: {category.name}</p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -686,12 +749,32 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">商品カテゴリ一覧</h3>
             <div className="space-y-2">
-              {draftProduct.map((category) => (
+              {draftProduct.map((category, index) => (
                 <div key={category.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
-                      <p className="text-sm text-gray-500">キー: {category.name}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => moveProduct(index, 'up')}
+                          disabled={index === 0}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="上に移動"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => moveProduct(index, 'down')}
+                          disabled={index === draftProduct.length - 1}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="下に移動"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
+                        <p className="text-sm text-gray-500">キー: {category.name}</p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -837,38 +920,62 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
               <div className="space-y-2">
                 {draftItems
                   .filter((i) => i.product_category_id === selectedProduct)
-                  .map((item) => (
-                  <div key={item.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                          {item.auto_select && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                              自動選択
-                            </span>
-                          )}
+                  .map((item, localIndex) => {
+                    const globalIndex = draftItems.findIndex(i => i.id === item.id)
+                    const filteredItems = draftItems.filter((i) => i.product_category_id === selectedProduct)
+                    return (
+                      <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-1">
+                              <button
+                                onClick={() => moveItem(globalIndex, 'up')}
+                                disabled={localIndex === 0}
+                                className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="上に移動"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => moveItem(globalIndex, 'down')}
+                                disabled={localIndex === filteredItems.length - 1}
+                                className="text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="下に移動"
+                              >
+                                ↓
+                              </button>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                                {item.auto_select && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                    自動選択
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-lg font-bold text-blue-600">¥{item.price.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEditItem(item)}
+                              className="text-blue-600 hover:text-blue-700 text-sm px-2"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id, item.name)}
+                              className="text-red-600 hover:text-red-700 text-sm px-2"
+                            >
+                              削除
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-lg font-bold text-blue-600">¥{item.price.toLocaleString()}</p>
+                        {item.description && <p className="text-sm text-gray-600">{item.description}</p>}
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => startEditItem(item)}
-                          className="text-blue-600 hover:text-blue-700 text-sm px-2"
-                        >
-                          編集
-                        </button>
-                        <button
-                          onClick={() => handleDeleteItem(item.id, item.name)}
-                          className="text-red-600 hover:text-red-700 text-sm px-2"
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </div>
-                    {item.description && <p className="text-sm text-gray-600">{item.description}</p>}
-                  </div>
-                ))}
+                    )
+                  })}
               </div>
             )}
           </div>
