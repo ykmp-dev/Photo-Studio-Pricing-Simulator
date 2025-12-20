@@ -11,10 +11,12 @@ import type { ProductCategory, Item } from '../types/category'
 import type { ConditionalRule } from '../types/formV3'
 
 export function initFormBuilder(
+  shopId: number,
   shootingCategoryId: number,
   shootingCategoryName: string
 ): FormBuilderData {
   return {
+    shopId,
     shootingCategoryId,
     shootingCategoryName,
     steps: []

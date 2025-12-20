@@ -48,9 +48,10 @@ describe('FormBuilder Logic', () => {
 
   describe('initFormBuilder', () => {
     it('should initialize FormBuilderData with shooting category', () => {
-      const result = initFormBuilder(1, '七五三')
+      const result = initFormBuilder(1, 1, '七五三')
 
       expect(result).toEqual({
+        shopId: 1,
         shootingCategoryId: 1,
         shootingCategoryName: '七五三',
         steps: []
@@ -60,7 +61,7 @@ describe('FormBuilder Logic', () => {
 
   describe('addTriggerStep', () => {
     it('should add a trigger step to FormBuilderData', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const result = addTriggerStep(formData, mockTriggerCategory)
 
       expect(result.steps).toHaveLength(1)
@@ -70,7 +71,7 @@ describe('FormBuilder Logic', () => {
     })
 
     it('should allow multiple trigger steps', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const result1 = addTriggerStep(formData, mockTriggerCategory)
       const result2 = addTriggerStep(result1, { ...mockTriggerCategory, id: 99, displayName: '曜日' })
 
@@ -81,7 +82,7 @@ describe('FormBuilder Logic', () => {
 
   describe('addConditionalStep', () => {
     it('should add a conditional step with condition', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const withTrigger = addTriggerStep(formData, mockTriggerCategory)
 
       const result = addConditionalStep(withTrigger, mockConditionalCategory, {
@@ -100,7 +101,7 @@ describe('FormBuilder Logic', () => {
     })
 
     it('should throw error if no trigger steps exist', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
 
       expect(() => {
         addConditionalStep(formData, mockConditionalCategory, {
@@ -114,7 +115,7 @@ describe('FormBuilder Logic', () => {
 
   describe('addCommonFinalStep', () => {
     it('should add a common_final step', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const result = addCommonFinalStep(formData, mockCommonFinalCategory)
 
       expect(result.steps).toHaveLength(1)
@@ -125,7 +126,7 @@ describe('FormBuilder Logic', () => {
 
   describe('removeStep', () => {
     it('should remove a step by index', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const withSteps = addTriggerStep(
         addTriggerStep(formData, mockTriggerCategory),
         { ...mockTriggerCategory, id: 99 }
@@ -140,7 +141,7 @@ describe('FormBuilder Logic', () => {
 
   describe('validateFormBuilder', () => {
     it('should return valid for properly configured form', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const withTrigger = addTriggerStep(formData, mockTriggerCategory)
 
       const result = validateFormBuilder(withTrigger)
@@ -150,7 +151,7 @@ describe('FormBuilder Logic', () => {
     })
 
     it('should return error if no trigger steps', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
 
       const result = validateFormBuilder(formData)
 
@@ -159,7 +160,7 @@ describe('FormBuilder Logic', () => {
     })
 
     it('should return error if category has no items', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const emptyCategory: FormBuilderCategory = {
         ...mockTriggerCategory,
         items: []
@@ -175,7 +176,7 @@ describe('FormBuilder Logic', () => {
 
   describe('convertToProductCategories', () => {
     it('should convert FormBuilderData to product categories and items', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const withTrigger = addTriggerStep(formData, mockTriggerCategory)
 
       const result = convertToProductCategories(withTrigger)
@@ -187,7 +188,7 @@ describe('FormBuilder Logic', () => {
     })
 
     it('should set conditional_rule for conditional steps', () => {
-      const formData = initFormBuilder(1, '七五三')
+      const formData = initFormBuilder(1, 1, '七五三')
       const withTrigger = addTriggerStep(formData, mockTriggerCategory)
       const withConditional = addConditionalStep(withTrigger, mockConditionalCategory, {
         fieldId: 1,

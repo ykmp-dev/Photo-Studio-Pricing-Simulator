@@ -22,6 +22,7 @@ interface FormBuilderWizardProps {
  * モーダルポップアップとして表示されます
  */
 export default function FormBuilderWizard({
+  shopId,
   selectedCategory,
   initialFormData,
   onSave,
@@ -35,7 +36,7 @@ export default function FormBuilderWizard({
     if (initialFormData) {
       setFormData(initialFormData)
     } else {
-      const newFormData = initFormBuilder(selectedCategory.id, selectedCategory.display_name)
+      const newFormData = initFormBuilder(shopId, selectedCategory.id, selectedCategory.display_name)
       setFormData(newFormData)
     }
   }, [selectedCategory, initialFormData])
