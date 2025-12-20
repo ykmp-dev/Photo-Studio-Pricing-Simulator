@@ -14,10 +14,7 @@ import {
   deleteItem,
 } from '../../services/categoryService'
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
-import type { ConditionalRule } from '../../types/formV3'
 import { getErrorMessage } from '../../utils/errorMessages'
-import SimpleConditionBuilder from './SimpleConditionBuilder'
-import { formSectionLabels, productTypeLabels } from '../../utils/labelConverter'
 
 interface CategoryManagerProps {
   shopId: number
@@ -59,11 +56,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   const [formDescription, setFormDescription] = useState('')
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
-
-  // v3フォーム値
-  const [formSection, setFormSection] = useState<'trigger' | 'conditional' | 'common_final' | ''>('')
-  const [formProductType, setFormProductType] = useState<'plan' | 'option_single' | 'option_multi' | ''>('')
-  const [formConditionalRule, setFormConditionalRule] = useState<ConditionalRule | null>(null)
 
   // 変更通知
   useEffect(() => {
@@ -165,11 +157,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
       is_active: true,
       created_at: now,
       updated_at: now,
-
-      // v3フィールド
-      form_section: formSection || null,
-      product_type: formProductType || null,
-      conditional_rule: formConditionalRule,
     }
     setDraftProduct([...draftProduct, newCategory])
     setHasChanges(true)
@@ -231,11 +218,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
               display_name: formDisplayName,
               description: formDescription || null,
               updated_at: new Date().toISOString(),
-
-              // v3フィールド
-              form_section: formSection || null,
-              product_type: formProductType || null,
-              conditional_rule: formConditionalRule,
             }
           : cat
       )
@@ -290,11 +272,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
-
-    // v3フィールドリセット
-    setFormSection('')
-    setFormProductType('')
-    setFormConditionalRule(null)
   }
 
   const startEditShooting = (category: ShootingCategory) => {
@@ -309,11 +286,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDisplayName(category.display_name)
     setFormDescription(category.description || '')
     setEditingProductId(category.id)
-
-    // v3フィールド
-    setFormSection(category.form_section || '')
-    setFormProductType(category.product_type || '')
-    setFormConditionalRule(category.conditional_rule || null)
   }
 
   const startEditItem = (item: DraftItem) => {
@@ -664,201 +636,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                 />
               </div>
 
-              {/* v3フィールド */}
-              <div className="border-t pt-4 mt-4">
-                <h4 className="text-base font-bold text-gray-800 mb-4">📋 お客様画面での表示設定</h4>
-
-                <div className="space-y-4">
-                  {/* 表示タイミング */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      ① いつ表示しますか？
-                    </label>
-                    <div className="space-y-2">
-                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                        style={{ borderColor: formSection === 'trigger' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'trigger' ? '#eff6ff' : 'transparent' }}>
-                        <input
-                          type="radio"
-                          value="trigger"
-                          checked={formSection === 'trigger'}
-                          onChange={(e) => setFormSection(e.target.value as any)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">最初に表示（必ず選択）</div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            例: 撮影コース、撮影場所など、お客様が最初に選ぶ項目
-                          </div>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                        style={{ borderColor: formSection === 'conditional' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'conditional' ? '#eff6ff' : 'transparent' }}>
-                        <input
-                          type="radio"
-                          value="conditional"
-                          checked={formSection === 'conditional'}
-                          onChange={(e) => setFormSection(e.target.value as any)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">条件によって表示</div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            例: スタジオ撮影を選んだ時だけ表示するヘアメイク
-                          </div>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                        style={{ borderColor: formSection === 'common_final' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === 'common_final' ? '#eff6ff' : 'transparent' }}>
-                        <input
-                          type="radio"
-                          value="common_final"
-                          checked={formSection === 'common_final'}
-                          onChange={(e) => setFormSection(e.target.value as any)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">最後に表示（追加オプション）</div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            例: データ納品、アルバム追加など、どのコースでも選べる追加オプション
-                          </div>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                        style={{ borderColor: formSection === '' ? '#3b82f6' : '#e5e7eb', backgroundColor: formSection === '' ? '#eff6ff' : 'transparent' }}>
-                        <input
-                          type="radio"
-                          value=""
-                          checked={formSection === ''}
-                          onChange={(e) => setFormSection(e.target.value as any)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">フォームに表示しない</div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            内部管理用など、お客様画面には表示しない
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* 選択方法 */}
-                  {formSection && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <label className="block text-sm font-semibold text-gray-800 mb-2">
-                        ② お客様はどう選びますか？
-                      </label>
-                      <div className="space-y-2">
-                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                          style={{ borderColor: formProductType === 'plan' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'plan' ? '#f0fdf4' : 'transparent' }}>
-                          <input
-                            type="radio"
-                            value="plan"
-                            checked={formProductType === 'plan'}
-                            onChange={(e) => setFormProductType(e.target.value as any)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">◉ 1つだけ選ぶ（丸ボタン）</div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              コース選択など、複数の選択肢から1つだけ選ぶ場合
-                            </div>
-                          </div>
-                        </label>
-                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                          style={{ borderColor: formProductType === 'option_single' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'option_single' ? '#f0fdf4' : 'transparent' }}>
-                          <input
-                            type="radio"
-                            value="option_single"
-                            checked={formProductType === 'option_single'}
-                            onChange={(e) => setFormProductType(e.target.value as any)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">▼ 1つだけ選ぶ（プルダウン）</div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              選択肢が多い場合、省スペースで表示
-                            </div>
-                          </div>
-                        </label>
-                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                          style={{ borderColor: formProductType === 'option_multi' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === 'option_multi' ? '#f0fdf4' : 'transparent' }}>
-                          <input
-                            type="radio"
-                            value="option_multi"
-                            checked={formProductType === 'option_multi'}
-                            onChange={(e) => setFormProductType(e.target.value as any)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">☑ 複数選べる（チェックボックス）</div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              衣装追加、データ納品など、複数選択可能な追加オプション
-                            </div>
-                          </div>
-                        </label>
-                        <label className="flex items-start gap-2 p-3 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors"
-                          style={{ borderColor: formProductType === '' ? '#10b981' : '#e5e7eb', backgroundColor: formProductType === '' ? '#f0fdf4' : 'transparent' }}>
-                          <input
-                            type="radio"
-                            value=""
-                            checked={formProductType === ''}
-                            onChange={(e) => setFormProductType(e.target.value as any)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">選択不要</div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              表示のみ、または別の方法で選択
-                            </div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 条件設定（conditionalの場合のみ） */}
-                  {formSection === 'conditional' && (
-                    <div>
-                      <SimpleConditionBuilder
-                        value={formConditionalRule}
-                        onChange={setFormConditionalRule}
-                        availableFields={
-                          draftProduct
-                            .filter((cat) => cat.form_section === 'trigger')
-                            .map((cat) => ({
-                              value: `category_${cat.id}`,
-                              label: cat.display_name
-                            }))
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {/* プレビュー */}
-                  {formSection && formProductType && (
-                    <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <div className="text-blue-600 text-xl">👁️</div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-blue-900 mb-1">お客様画面のイメージ</div>
-                          <div className="text-sm text-blue-800">
-                            {formProductType === 'plan' && '◉ 丸ボタンで1つだけ選択できます'}
-                            {formProductType === 'option_single' && '▼ プルダウンで1つだけ選択できます'}
-                            {formProductType === 'option_multi' && '☑ チェックボックスで複数選択できます'}
-                          </div>
-                          <div className="text-xs text-blue-700 mt-2">
-                            {formSection === 'trigger' && '※ 画面を開くと最初に表示されます'}
-                            {formSection === 'conditional' && '※ 設定した条件に該当する場合のみ表示されます'}
-                            {formSection === 'common_final' && '※ 他の選択の後、最後に表示されます'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               <div className="flex gap-2">
                 {editingProductId ? (
                   <>
@@ -897,25 +674,8 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                 <div key={category.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {category.form_section && (
-                          <span className="text-lg">
-                            {category.form_section === 'trigger' && '📸'}
-                            {category.form_section === 'conditional' && '👗'}
-                            {category.form_section === 'common_final' && '📚'}
-                          </span>
-                        )}
-                        <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
-                      </div>
-                      {category.form_section && (
-                        <p className="text-xs text-gray-600">
-                          {formSectionLabels[category.form_section]}
-                          {category.product_type && ` / ${productTypeLabels[category.product_type]}`}
-                        </p>
-                      )}
-                      {!category.form_section && (
-                        <p className="text-xs text-gray-400">未設定</p>
-                      )}
+                      <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
+                      <p className="text-sm text-gray-500">キー: {category.name}</p>
                     </div>
                     <div className="flex gap-2">
                       <button

@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import type { ShootingCategory } from '../../../types/category'
 import type { FormBuilderData, WizardStep } from '../../../types/formBuilderV3'
 import { initFormBuilder } from '../../../utils/formBuilderLogic'
+import StepTrigger from './StepTrigger'
+import StepConditional from './StepConditional'
+import StepCommonFinal from './StepCommonFinal'
+import StepPreview from './StepPreview'
 
 interface FormBuilderWizardProps {
   shopId: number
@@ -23,9 +27,8 @@ export default function FormBuilderWizard({
   onSave,
   onCancel
 }: FormBuilderWizardProps) {
-  const [currentStep] = useState<WizardStep>('add_trigger')
+  const [currentStep, setCurrentStep] = useState<WizardStep>('add_trigger')
   const [formData, setFormData] = useState<FormBuilderData | null>(null)
-  // TODO: setCurrentStep will be used when step navigation is implemented
 
   // 初期化: 既存データまたは新規データ
   useEffect(() => {
@@ -81,60 +84,36 @@ export default function FormBuilderWizard({
       {/* メインコンテンツ */}
       <div className="mb-6 min-h-[400px]">
         {currentStep === 'add_trigger' && formData && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              📸 最初に選ぶ項目を追加
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              撮影コース、撮影場所など、お客様が最初に選ぶ項目を設定します
-            </p>
-            {/* ここにStepTriggerコンポーネントを配置 */}
-            <div className="text-center text-gray-500 py-12">
-              実装中...
-            </div>
-          </div>
+          <StepTrigger
+            formData={formData}
+            onUpdate={setFormData}
+            onNext={() => setCurrentStep('add_conditional')}
+          />
         )}
 
         {currentStep === 'add_conditional' && formData && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              👗 条件付き項目を追加
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              特定の選択肢を選んだ時だけ表示する項目を設定します
-            </p>
-            <div className="text-center text-gray-500 py-12">
-              実装中...
-            </div>
-          </div>
+          <StepConditional
+            formData={formData}
+            onUpdate={setFormData}
+            onNext={() => setCurrentStep('add_common_final')}
+            onBack={() => setCurrentStep('add_trigger')}
+          />
         )}
 
         {currentStep === 'add_common_final' && formData && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              📚 いつも表示する項目を追加
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              どの選択肢でも必ず表示する追加オプションを設定します
-            </p>
-            <div className="text-center text-gray-500 py-12">
-              実装中...
-            </div>
-          </div>
+          <StepCommonFinal
+            formData={formData}
+            onUpdate={setFormData}
+            onNext={() => setCurrentStep('preview')}
+            onBack={() => setCurrentStep('add_conditional')}
+          />
         )}
 
         {currentStep === 'preview' && formData && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              👁️ プレビュー
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              作成したフォームの確認
-            </p>
-            <div className="text-center text-gray-500 py-12">
-              実装中...
-            </div>
-          </div>
+          <StepPreview
+            formData={formData}
+            onBack={() => setCurrentStep('add_common_final')}
+          />
         )}
       </div>
 
