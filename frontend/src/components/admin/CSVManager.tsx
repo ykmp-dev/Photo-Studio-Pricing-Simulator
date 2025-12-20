@@ -13,7 +13,7 @@ const TABLE_LABELS: Record<TableType, string> = {
 const SIMPLE_FIELDS: Record<TableType, string[]> = {
   shooting_categories: ['name', 'display_name', 'description', 'sort_order'],
   product_categories: ['name', 'display_name', 'description', 'sort_order'],
-  items: ['product_category_id', 'name', 'price', 'description', 'sort_order'],
+  items: ['product_category_name', 'name', 'price', 'description', 'sort_order'],
 }
 
 interface CSVManagerProps {
@@ -53,11 +53,26 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
         return
       }
 
+      // itemsテーブルの場合、product_category_nameを追加
+      let enrichedData = data
+      if (selectedTable === 'items' && simpleMode) {
+        const { data: productCategories } = await supabase
+          .from('product_categories')
+          .select('id, name')
+          .eq('shop_id', shopId)
+
+        const categoryMap = new Map(productCategories?.map(c => [c.id, c.name]) || [])
+        enrichedData = data.map(item => ({
+          ...item,
+          product_category_name: categoryMap.get(item.product_category_id) || ''
+        }))
+      }
+
       // CSVに変換
-      const headers = simpleMode ? SIMPLE_FIELDS[selectedTable] : Object.keys(data[0])
+      const headers = simpleMode ? SIMPLE_FIELDS[selectedTable] : Object.keys(enrichedData[0])
       const csvContent = [
         headers.join(','),
-        ...data.map((row: any) =>
+        ...enrichedData.map((row: any) =>
           headers.map(header => {
             const value = row[header]
             // 値にカンマや改行が含まれる場合はダブルクォートで囲む
@@ -156,6 +171,18 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
     try {
       setImporting(true)
 
+      // itemsテーブルのインポート時、product_category_nameからIDを解決
+      let productCategoryMap: Map<string, number> | null = null
+      if (selectedTable === 'items' && simpleMode) {
+        const { data: productCategories } = await supabase
+          .from('product_categories')
+          .select('id, name')
+          .eq('shop_id', shopId)
+          .eq('is_active', true)
+
+        productCategoryMap = new Map(productCategories?.map(c => [c.name, c.id]) || [])
+      }
+
       // シンプルモードの場合、不足しているフィールドを補完
       const dataToImport = draftData.map((row) => {
         const completeRow = { ...row }
@@ -182,6 +209,17 @@ export default function CSVManager({ onHasChanges }: CSVManagerProps) {
         if (selectedTable === 'items') {
           if (completeRow.is_required === undefined) completeRow.is_required = false
           if (completeRow.auto_select === undefined) completeRow.auto_select = false
+
+          // product_category_nameからproduct_category_idを解決
+          if (simpleMode && completeRow.product_category_name && productCategoryMap) {
+            const categoryId = productCategoryMap.get(completeRow.product_category_name)
+            if (!categoryId) {
+              throw new Error(`商品カテゴリ "${completeRow.product_category_name}" が見つかりません`)
+            }
+            completeRow.product_category_id = categoryId
+            // product_category_nameは削除（DBには不要）
+            delete completeRow.product_category_name
+          }
         }
 
         return completeRow
