@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormBuilderData, FormBuilderCategory, FormBuilderCondition } from '../../../types/formBuilderV3'
 import type { ProductCategory, Item } from '../../../types/category'
-import { addConditionalStep } from '../../../utils/formBuilderLogic'
+import { addConditionalStep, removeStep } from '../../../utils/formBuilderLogic'
 import { productTypeLabels } from '../../../utils/labelConverter'
 import { getProductCategories, getItems } from '../../../services/categoryService'
 
@@ -134,6 +134,21 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
     }
   }
 
+  const handleDelete = (stepIndex: number) => {
+    if (!confirm('この分岐設定を削除しますか？')) return
+
+    // 実際のsteps配列内のインデックスを見つける
+    const conditionalStepsWithIndex = formData.steps
+      .map((step, idx) => ({ step, idx }))
+      .filter(({ step }) => step.type === 'conditional')
+
+    const actualIndex = conditionalStepsWithIndex[stepIndex]?.idx
+    if (actualIndex !== undefined) {
+      const updatedFormData = removeStep(formData, actualIndex)
+      onUpdate(updatedFormData)
+    }
+  }
+
   // 選択されたフィールドのアイテム一覧
   const selectedFieldItems = selectedField
     ? triggerSteps.find((s) => s.category.id === selectedField)?.category.items || []
@@ -156,6 +171,13 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
                     {step.condition && ` / 条件: ${step.condition.value}を選んだ時`}
                   </div>
                 </div>
+                <button
+                  onClick={() => handleDelete(index)}
+                  className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                  title="削除"
+                >
+                  削除
+                </button>
               </div>
             ))}
           </div>
