@@ -61,7 +61,7 @@ export default function StepPreview({ formData, onBack }: StepPreviewProps) {
             <span className="text-gray-900">{triggerSteps.length}個</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">条件付き項目:</span>
+            <span className="font-medium text-gray-700">分岐設定:</span>
             <span className="text-gray-900">{conditionalSteps.length}個</span>
           </div>
           <div className="flex items-center gap-2">

@@ -604,14 +604,30 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   キー（name） <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="hair"
-                  required
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="hair"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextNumber = productCategories.length + 1
+                      setFormName(`category_${nextNumber}`)
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                    title="自動生成"
+                  >
+                    自動生成
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  自動生成ボタンで category_1, category_2... の形式で生成されます
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

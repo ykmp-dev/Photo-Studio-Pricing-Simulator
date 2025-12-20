@@ -73,7 +73,7 @@ export default function FormBuilderWizard({
         <div className="flex items-center justify-between">
           <StepIndicator step={1} label="最初に選ぶ項目" active={currentStep === 'add_trigger'} />
           <div className="h-px flex-1 bg-gray-300 mx-2"></div>
-          <StepIndicator step={2} label="条件付き項目" active={currentStep === 'add_conditional'} />
+          <StepIndicator step={2} label="分岐設定" active={currentStep === 'add_conditional'} />
           <div className="h-px flex-1 bg-gray-300 mx-2"></div>
           <StepIndicator step={3} label="いつも表示" active={currentStep === 'add_common_final'} />
           <div className="h-px flex-1 bg-gray-300 mx-2"></div>

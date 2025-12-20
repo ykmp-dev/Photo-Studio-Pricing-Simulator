@@ -108,7 +108,7 @@ describe('FormBuilder Logic', () => {
           fieldName: '撮影場所',
           value: 'スタジオ撮影'
         })
-      }).toThrow('条件付き項目を追加するには、最初に選ぶ項目が必要です')
+      }).toThrow('分岐設定を追加するには、最初に選ぶ項目が必要です')
     })
   })
 

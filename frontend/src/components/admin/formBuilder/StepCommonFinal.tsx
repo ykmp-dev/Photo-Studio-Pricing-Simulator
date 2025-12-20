@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormBuilderData, FormBuilderCategory } from '../../../types/formBuilderV3'
+import type { ProductCategory, Item } from '../../../types/category'
 import { addCommonFinalStep } from '../../../utils/formBuilderLogic'
 import { productTypeLabels } from '../../../utils/labelConverter'
+import { getProductCategories, getItems } from '../../../services/categoryService'
 
 interface StepCommonFinalProps {
   formData: FormBuilderData
@@ -15,53 +17,82 @@ interface StepCommonFinalProps {
  * どの選択肢でも必ず表示する追加オプションを設定
  */
 export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: StepCommonFinalProps) {
-  const [categoryName, setCategoryName] = useState('')
-  const [categoryDisplayName, setCategoryDisplayName] = useState('')
-  const [categoryDescription, setCategoryDescription] = useState('')
+  // 既存データの取得
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
+  const [items, setItems] = useState<Item[]>([])
+  const [loading, setLoading] = useState(true)
   const [productType, setProductType] = useState<'plan' | 'option_single' | 'option_multi'>('option_multi')
-  const [items, setItems] = useState<Array<{ name: string; price: number; description?: string }>>([
-    { name: '', price: 0, description: '' }
-  ])
 
+  const shopId = formData.shopId
   const commonFinalSteps = formData.steps.filter((s) => s.type === 'common_final')
 
-  const handleAddItem = () => {
-    setItems([...items, { name: '', price: 0, description: '' }])
-  }
-
-  const handleRemoveItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index))
+  // 商品カテゴリ一覧を取得
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setLoading(true)
+        const categories = await getProductCategories(shopId)
+        setProductCategories(categories)
+      } catch (error) {
+        console.error('商品カテゴリの読み込みに失敗:', error)
+        alert('商品カテゴリの読み込みに失敗しました')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    loadCategories()
+  }, [shopId])
 
-  const handleItemChange = (index: number, field: string, value: string | number) => {
-    const updatedItems = [...items]
-    updatedItems[index] = { ...updatedItems[index], [field]: value }
-    setItems(updatedItems)
-  }
+  // 選択されたカテゴリのアイテム一覧を取得
+  useEffect(() => {
+    const loadItems = async () => {
+      if (selectedCategoryId) {
+        try {
+          const categoryItems = await getItems(shopId, selectedCategoryId)
+          setItems(categoryItems)
+        } catch (error) {
+          console.error('アイテムの読み込みに失敗:', error)
+          alert('アイテムの読み込みに失敗しました')
+          setItems([])
+        }
+      } else {
+        setItems([])
+      }
+    }
+    loadItems()
+  }, [selectedCategoryId, shopId])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!categoryName || !categoryDisplayName) {
-      alert('カテゴリ名と表示名は必須です')
+    // バリデーション
+    if (!selectedCategoryId) {
+      alert('商品カテゴリを選択してください')
       return
     }
 
-    if (items.some((item) => !item.name || item.price < 0)) {
-      alert('すべての選択肢に名前を入力し、価格は0以上にしてください')
+    if (items.length === 0) {
+      alert('選択したカテゴリにアイテムが登録されていません。先にカテゴリ管理タブでアイテムを追加してください。')
       return
     }
 
+    // 選択されたカテゴリ情報を取得
+    const selectedCategory = productCategories.find(c => c.id === selectedCategoryId)
+    if (!selectedCategory) {
+      alert('カテゴリ情報の取得に失敗しました')
+      return
+    }
+
+    // FormBuilderCategoryを作成（既存データから）
     const category: FormBuilderCategory = {
-      id: Date.now(),
-      name: categoryName,
-      displayName: categoryDisplayName,
-      description: categoryDescription || undefined,
+      id: selectedCategory.id,
+      name: selectedCategory.name,
+      displayName: selectedCategory.display_name,
+      description: selectedCategory.description || undefined,
       productType,
-      items: items.map((item, index) => ({
-        id: Date.now() + index,
+      items: items.map((item) => ({
+        id: item.id,
         name: item.name,
         price: item.price,
         description: item.description || undefined
@@ -72,11 +103,9 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
     onUpdate(updatedFormData)
 
     // フォームリセット
-    setCategoryName('')
-    setCategoryDisplayName('')
-    setCategoryDescription('')
+    setSelectedCategoryId(null)
     setProductType('option_multi')
-    setItems([{ name: '', price: 0, description: '' }])
+    setItems([])
   }
 
   return (
@@ -101,7 +130,7 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
         </div>
       )}
 
-      {/* 新規項目追加フォーム */}
+      {/* 既存カテゴリ選択フォーム */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h3 className="text-base font-semibold text-gray-800 mb-4">新しい項目を追加</h3>
         <p className="text-sm text-gray-600 mb-4">
@@ -109,45 +138,43 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* カテゴリ基本情報 */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                項目名（内部用キー） <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={categoryName}
-                onChange={(e) => setCategoryName(e.target.value)}
+          {/* 商品カテゴリ選択 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              商品カテゴリを選択 <span className="text-red-500">*</span>
+            </label>
+            {loading ? (
+              <div className="text-sm text-gray-500">読み込み中...</div>
+            ) : productCategories.length === 0 ? (
+              <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                商品カテゴリが登録されていません。先に「カテゴリ管理」タブで商品カテゴリとアイテムを作成してください。
+              </div>
+            ) : (
+              <select
+                value={selectedCategoryId || ''}
+                onChange={(e) => setSelectedCategoryId(e.target.value ? Number(e.target.value) : null)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="data_delivery"
                 required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                お客様に表示する名前 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={categoryDisplayName}
-                onChange={(e) => setCategoryDisplayName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="データ納品"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">説明（任意）</label>
-              <textarea
-                value={categoryDescription}
-                onChange={(e) => setCategoryDescription(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                rows={2}
-                placeholder="撮影データの納品オプションです"
-              />
-            </div>
+              >
+                <option value="">選択してください</option>
+                {productCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.display_name} ({category.name})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
+
+          {/* 選択されたカテゴリの説明 */}
+          {selectedCategoryId && productCategories.find(c => c.id === selectedCategoryId)?.description && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-xs font-medium text-blue-800 mb-1">カテゴリ説明</div>
+              <div className="text-sm text-blue-700">
+                {productCategories.find(c => c.id === selectedCategoryId)?.description}
+              </div>
+            </div>
+          )}
 
           {/* 選択方法 */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -198,62 +225,38 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
             </div>
           </div>
 
-          {/* 選択肢 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-2">
-              選択肢 <span className="text-red-500">*</span>
-            </label>
-            <div className="space-y-3">
-              {items.map((item, index) => (
-                <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder={`選択肢${index + 1}の名前`}
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={item.price}
-                        onChange={(e) => handleItemChange(index, 'price', Number(e.target.value))}
-                        className="w-32 border border-gray-300 rounded px-3 py-2"
-                        placeholder="価格"
-                        min="0"
-                        required
-                      />
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2"
-                        placeholder="説明（任意）"
-                      />
-                    </div>
-                  </div>
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(index)}
-                      className="text-red-600 hover:text-red-700 text-sm px-2"
-                    >
-                      削除
-                    </button>
-                  )}
+          {/* アイテム一覧（自動表示・編集不可） */}
+          {selectedCategoryId && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                このカテゴリのアイテム（自動表示）
+              </label>
+              {items.length === 0 ? (
+                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  このカテゴリにはアイテムが登録されていません。先に「カテゴリ管理」タブでアイテムを追加してください。
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{item.name}</div>
+                        {item.description && (
+                          <div className="text-xs text-gray-600 mt-1">{item.description}</div>
+                        )}
+                      </div>
+                      <div className="text-lg font-semibold text-gray-800">
+                        ¥{item.price.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-gray-500 mt-2">
+                    ※ アイテムの編集は「カテゴリ管理」タブで行えます
+                  </div>
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              + 選択肢を追加
-            </button>
-          </div>
+          )}
 
           {/* 追加ボタン */}
           <button

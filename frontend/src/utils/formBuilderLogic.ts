@@ -45,7 +45,7 @@ export function addConditionalStep(
   // triggerステップが存在するかチェック
   const hasTrigger = formData.steps.some(s => s.type === 'trigger')
   if (!hasTrigger) {
-    throw new Error('条件付き項目を追加するには、最初に選ぶ項目が必要です')
+    throw new Error('分岐設定を追加するには、最初に選ぶ項目が必要です')
   }
 
   return {
