@@ -1,0 +1,8 @@
+name,display_name,description,sort_order
+shooting_plan,撮影プラン,お客様のご要望に合わせた各種撮影プラン,1
+album_package,アルバム商品,高品質な台紙・アルバムで思い出を形に,2
+data_delivery,データ納品,撮影データをデジタル形式でお渡し,3
+print_service,プリントサービス,各種サイズの高品質プリント,4
+rental_costume,衣装レンタル,撮影用の衣装レンタルサービス,5
+hair_makeup,ヘアメイク,プロによるヘアセット・メイクアップ,6
+extra_option,追加オプション,撮影をより充実させる各種オプション,7
