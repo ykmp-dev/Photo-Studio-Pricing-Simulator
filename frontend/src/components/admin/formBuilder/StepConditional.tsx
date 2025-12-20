@@ -23,6 +23,7 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [productType, setProductType] = useState<'plan' | 'option_single' | 'option_multi'>('option_single')
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null)
 
   // 条件設定
   const [selectedField, setSelectedField] = useState<number | null>(null)
@@ -118,7 +119,32 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
     }
 
     try {
-      const updatedFormData = addConditionalStep(formData, category, condition)
+      let updatedFormData: FormBuilderData
+
+      if (editingStepIndex !== null) {
+        // 編集モード: 既存ステップを更新
+        const conditionalStepsWithIndex = formData.steps
+          .map((step, idx) => ({ step, idx }))
+          .filter(({ step }) => step.type === 'conditional')
+
+        const actualIndex = conditionalStepsWithIndex[editingStepIndex]?.idx
+        if (actualIndex !== undefined) {
+          const newSteps = [...formData.steps]
+          newSteps[actualIndex] = {
+            ...newSteps[actualIndex],
+            category,
+            condition
+          }
+          updatedFormData = { ...formData, steps: newSteps }
+        } else {
+          alert('編集対象のステップが見つかりませんでした')
+          return
+        }
+      } else {
+        // 新規追加モード
+        updatedFormData = addConditionalStep(formData, category, condition)
+      }
+
       onUpdate(updatedFormData)
 
       // フォームリセット
@@ -127,11 +153,37 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
       setItems([])
       setSelectedField(null)
       setSelectedValue('')
+      setEditingStepIndex(null)
     } catch (error) {
       if (error instanceof Error) {
         alert(error.message)
       }
     }
+  }
+
+  const handleEdit = async (stepIndex: number) => {
+    const conditionalSteps = formData.steps.filter((s) => s.type === 'conditional')
+    const step = conditionalSteps[stepIndex]
+
+    if (!step || !step.condition) return
+
+    // フォームに既存データをセット
+    setSelectedCategoryId(step.category.id)
+    setProductType(step.category.productType)
+    setSelectedField(step.condition.fieldId)
+    setSelectedValue(step.condition.value)
+    setEditingStepIndex(stepIndex)
+
+    // アイテムはuseEffectで自動的に読み込まれる
+  }
+
+  const handleCancelEdit = () => {
+    setSelectedCategoryId(null)
+    setProductType('option_single')
+    setItems([])
+    setSelectedField(null)
+    setSelectedValue('')
+    setEditingStepIndex(null)
   }
 
   const handleDelete = (stepIndex: number) => {
@@ -162,7 +214,9 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
           <h3 className="text-base font-semibold text-gray-800 mb-3">追加済みの分岐設定</h3>
           <div className="space-y-2">
             {conditionalSteps.map((step, index) => (
-              <div key={index} className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div key={index} className={`flex items-center gap-2 p-3 border rounded-lg ${
+                editingStepIndex === index ? 'bg-yellow-50 border-yellow-400' : 'bg-purple-50 border-purple-200'
+              }`}>
                 <span className="text-lg">👗</span>
                 <div className="flex-1">
                   <div className="font-medium text-gray-800">{step.category.displayName}</div>
@@ -170,14 +224,28 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
                     {productTypeLabels[step.category.productType]} / {step.category.items.length}個の選択肢
                     {step.condition && ` / 条件: ${step.condition.value}を選んだ時`}
                   </div>
+                  {editingStepIndex === index && (
+                    <div className="text-xs text-yellow-700 mt-1">編集中...</div>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDelete(index)}
-                  className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
-                  title="削除"
-                >
-                  削除
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(index)}
+                    className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors"
+                    title="編集"
+                    disabled={editingStepIndex !== null && editingStepIndex !== index}
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                    title="削除"
+                    disabled={editingStepIndex !== null}
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -186,7 +254,19 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
 
       {/* 既存カテゴリ選択フォーム */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">新しい分岐設定を追加</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-gray-800">
+            {editingStepIndex !== null ? '分岐設定を編集' : '新しい分岐設定を追加'}
+          </h3>
+          {editingStepIndex !== null && (
+            <button
+              onClick={handleCancelEdit}
+              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+            >
+              編集をキャンセル
+            </button>
+          )}
+        </div>
 
         {triggerSteps.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
@@ -364,9 +444,13 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
             {/* 追加ボタン */}
             <button
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+              className={`w-full px-4 py-2 rounded-lg font-medium text-white ${
+                editingStepIndex !== null
+                  ? 'bg-yellow-600 hover:bg-yellow-700'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
-              分岐設定を追加
+              {editingStepIndex !== null ? '更新' : '分岐設定を追加'}
             </button>
           </form>
         )}

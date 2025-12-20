@@ -23,6 +23,7 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [productType, setProductType] = useState<'plan' | 'option_single' | 'option_multi'>('option_multi')
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null)
 
   const shopId = formData.shopId
   const commonFinalSteps = formData.steps.filter((s) => s.type === 'common_final')
@@ -99,13 +100,59 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
       }))
     }
 
-    const updatedFormData = addCommonFinalStep(formData, category)
+    let updatedFormData: FormBuilderData
+
+    if (editingStepIndex !== null) {
+      // 編集モード: 既存ステップを更新
+      const commonFinalStepsWithIndex = formData.steps
+        .map((step, idx) => ({ step, idx }))
+        .filter(({ step }) => step.type === 'common_final')
+
+      const actualIndex = commonFinalStepsWithIndex[editingStepIndex]?.idx
+      if (actualIndex !== undefined) {
+        const newSteps = [...formData.steps]
+        newSteps[actualIndex] = {
+          ...newSteps[actualIndex],
+          category
+        }
+        updatedFormData = { ...formData, steps: newSteps }
+      } else {
+        alert('編集対象のステップが見つかりませんでした')
+        return
+      }
+    } else {
+      // 新規追加モード
+      updatedFormData = addCommonFinalStep(formData, category)
+    }
+
     onUpdate(updatedFormData)
 
     // フォームリセット
     setSelectedCategoryId(null)
     setProductType('option_multi')
     setItems([])
+    setEditingStepIndex(null)
+  }
+
+  const handleEdit = async (stepIndex: number) => {
+    const commonFinalSteps = formData.steps.filter((s) => s.type === 'common_final')
+    const step = commonFinalSteps[stepIndex]
+
+    if (!step) return
+
+    // フォームに既存データをセット
+    setSelectedCategoryId(step.category.id)
+    setProductType(step.category.productType)
+    setEditingStepIndex(stepIndex)
+
+    // アイテムはuseEffectで自動的に読み込まれる
+  }
+
+  const handleCancelEdit = () => {
+    setSelectedCategoryId(null)
+    setProductType('option_multi')
+    setItems([])
+    setEditingStepIndex(null)
   }
 
   const handleDelete = (stepIndex: number) => {
@@ -131,21 +178,37 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
           <h3 className="text-base font-semibold text-gray-800 mb-3">追加済みのいつも表示する項目</h3>
           <div className="space-y-2">
             {commonFinalSteps.map((step, index) => (
-              <div key={index} className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div key={index} className={`flex items-center gap-2 p-3 border rounded-lg ${
+                editingStepIndex === index ? 'bg-yellow-50 border-yellow-400' : 'bg-green-50 border-green-200'
+              }`}>
                 <span className="text-lg">📚</span>
                 <div className="flex-1">
                   <div className="font-medium text-gray-800">{step.category.displayName}</div>
                   <div className="text-xs text-gray-600">
                     {productTypeLabels[step.category.productType]} / {step.category.items.length}個の選択肢
                   </div>
+                  {editingStepIndex === index && (
+                    <div className="text-xs text-yellow-700 mt-1">編集中...</div>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDelete(index)}
-                  className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
-                  title="削除"
-                >
-                  削除
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(index)}
+                    className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors"
+                    title="編集"
+                    disabled={editingStepIndex !== null && editingStepIndex !== index}
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                    title="削除"
+                    disabled={editingStepIndex !== null}
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -154,10 +217,26 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
 
       {/* 既存カテゴリ選択フォーム */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">新しい項目を追加</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          どのコースを選んでも最後に表示される追加オプションです（例：データ納品、アルバム追加など）
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">
+              {editingStepIndex !== null ? '項目を編集' : '新しい項目を追加'}
+            </h3>
+            {editingStepIndex === null && (
+              <p className="text-sm text-gray-600 mt-1">
+                どのコースを選んでも最後に表示される追加オプションです（例：データ納品、アルバム追加など）
+              </p>
+            )}
+          </div>
+          {editingStepIndex !== null && (
+            <button
+              onClick={handleCancelEdit}
+              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+            >
+              編集をキャンセル
+            </button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 商品カテゴリ選択 */}
@@ -283,9 +362,13 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
           {/* 追加ボタン */}
           <button
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+            className={`w-full px-4 py-2 rounded-lg font-medium text-white ${
+              editingStepIndex !== null
+                ? 'bg-yellow-600 hover:bg-yellow-700'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
           >
-            項目を追加
+            {editingStepIndex !== null ? '更新' : '項目を追加'}
           </button>
         </form>
       </div>
