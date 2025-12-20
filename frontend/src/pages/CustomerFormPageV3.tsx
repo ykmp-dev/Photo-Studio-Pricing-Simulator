@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getFormBuilderDataByShootingCategory } from '../services/formBuilderService'
+import { convertFormBuilderToCustomerForm } from '../utils/formBuilderConverter'
 import { filterVisibleCategories, hasTriggerSections } from '../utils/sectionLogic'
 import { calculateTotalPrice } from '../utils/formHelpers'
 import type { ProductCategoryV3, FormValues } from '../types/formV3'
@@ -60,42 +62,26 @@ export default function CustomerFormPageV3() {
     try {
       setLoading(true)
 
-      // 商品カテゴリを取得
-      const { data: assocData, error: assocError } = await supabase
-        .from('shooting_product_associations')
-        .select('product_category_id')
-        .eq('shooting_category_id', shootingCategoryId)
+      if (!shopId) return
 
-      if (assocError) throw assocError
+      // FormBuilderDataを取得
+      const formBuilderRecord = await getFormBuilderDataByShootingCategory(
+        parseInt(shopId),
+        shootingCategoryId
+      )
 
-      const productCategoryIds = (assocData || []).map((a) => a.product_category_id)
-
-      if (productCategoryIds.length === 0) {
+      if (!formBuilderRecord) {
+        // FormBuilderデータが存在しない場合は空に
         setProductCategories([])
         setAllItems([])
         return
       }
 
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('product_categories')
-        .select('*')
-        .in('id', productCategoryIds)
-        .eq('is_active', true)
-        .order('sort_order')
+      // FormBuilderDataをお客様向けフォーム用のデータに変換
+      const { categories, items } = convertFormBuilderToCustomerForm(formBuilderRecord.form_data)
 
-      if (categoriesError) throw categoriesError
-      setProductCategories((categoriesData || []) as ProductCategoryV3[])
-
-      // アイテムを取得
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
-        .select('*')
-        .in('product_category_id', productCategoryIds)
-        .eq('is_active', true)
-        .order('sort_order')
-
-      if (itemsError) throw itemsError
-      setAllItems(itemsData || [])
+      setProductCategories(categories)
+      setAllItems(items)
 
       // フォームをリセット
       setFormValues({})
@@ -166,7 +152,18 @@ export default function CustomerFormPageV3() {
           </div>
         )}
 
-        {!loading && selectedShootingCategoryId && (
+        {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <p className="text-yellow-800">
+              この撮影カテゴリのフォームはまだ作成されていません。
+            </p>
+            <p className="text-sm text-yellow-600 mt-2">
+              管理画面のフォームビルダーで先にフォームを作成してください。
+            </p>
+          </div>
+        )}
+
+        {!loading && selectedShootingCategoryId && productCategories.length > 0 && (
           <>
             {/* Triggerセクション */}
             {hasTrigger && (
