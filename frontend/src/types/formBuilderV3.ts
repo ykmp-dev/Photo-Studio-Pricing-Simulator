@@ -36,6 +36,11 @@ export interface FormBuilderData {
   shootingCategoryId: number
   shootingCategoryName: string
   steps: FormBuilderStep[]
+  metadata?: {
+    heading_trigger?: string
+    heading_conditional?: string
+    heading_common_final?: string
+  }
 }
 
 /**
