@@ -7,6 +7,7 @@ export interface ShootingCategory {
   name: string
   display_name: string
   description: string | null
+  image_url: string | null
   sort_order: number
   is_active: boolean
   created_at: string
@@ -64,6 +65,7 @@ export interface CreateShootingCategory {
   name: string
   display_name: string
   description?: string
+  image_url?: string
   sort_order?: number
   is_active?: boolean
 }
@@ -111,6 +113,7 @@ export interface UpdateShootingCategory {
   name?: string
   display_name?: string
   description?: string
+  image_url?: string
   sort_order?: number
   is_active?: boolean
 }
