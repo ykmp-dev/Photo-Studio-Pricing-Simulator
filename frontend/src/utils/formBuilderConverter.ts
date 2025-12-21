@@ -19,6 +19,18 @@ export function convertFormBuilderToCustomerForm(
   const categories: ProductCategoryV3[] = []
   const items: Item[] = []
 
+  // 第1パス: カテゴリIDごとのアイテム名→IDマップを作成
+  const itemNameToIdMap = new Map<number, Map<string, number>>()
+
+  formData.steps.forEach((step) => {
+    const categoryItemMap = new Map<string, number>()
+    step.category.items.forEach((item) => {
+      categoryItemMap.set(item.name, item.id)
+    })
+    itemNameToIdMap.set(step.category.id, categoryItemMap)
+  })
+
+  // 第2パス: カテゴリとアイテムを作成
   formData.steps.forEach((step, stepIndex) => {
     // ProductCategoryV3を作成
     const category: ProductCategoryV3 = {
@@ -38,15 +50,25 @@ export function convertFormBuilderToCustomerForm(
 
     // conditionalステップの場合、条件ルールを設定
     if (step.type === 'conditional' && step.condition) {
-      category.conditional_rule = {
-        AND: [
-          {
-            field: `category_${step.condition.fieldId}`,
-            operator: '=',
-            value: step.condition.value,
-          },
-        ],
-      } as ConditionalRule
+      // 条件値（アイテム名）を対応するアイテムIDに変換
+      const triggerCategoryItemMap = itemNameToIdMap.get(step.condition.fieldId)
+      const itemId = triggerCategoryItemMap?.get(step.condition.value)
+
+      if (itemId !== undefined) {
+        category.conditional_rule = {
+          AND: [
+            {
+              field: `category_${step.condition.fieldId}`,
+              operator: '=',
+              value: itemId, // アイテムIDを使用（数値）
+            },
+          ],
+        } as ConditionalRule
+      } else {
+        console.warn(
+          `条件ルールの変換エラー: カテゴリ ${step.condition.fieldId} にアイテム "${step.condition.value}" が見つかりません`
+        )
+      }
     }
 
     categories.push(category)

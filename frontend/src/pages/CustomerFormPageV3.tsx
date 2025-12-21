@@ -123,10 +123,32 @@ export default function CustomerFormPageV3() {
     console.log('formValues:', formValues)
     console.log('productCategories:', productCategories)
     console.log('visibleCategories:', visibleCategories)
+
+    // 条件ルールの詳細をログ出力
+    productCategories
+      .filter((cat) => cat.form_section === 'conditional' && cat.conditional_rule)
+      .forEach((cat) => {
+        console.log(`[条件] ${cat.display_name}:`, cat.conditional_rule)
+      })
   }, [formValues, productCategories, visibleCategories])
 
   // Triggerセクションの存在確認
   const hasTrigger = hasTriggerSections(productCategories)
+
+  // Conditionalセクションの存在確認
+  const hasConditionalSections = productCategories.some(
+    (cat) => cat.is_active && cat.form_section === 'conditional'
+  )
+
+  // Conditionalセクションが表示されているか確認
+  const hasVisibleConditional = visibleCategories.some(
+    (cat) => cat.form_section === 'conditional'
+  )
+
+  // Common Finalの表示条件:
+  // - Conditionalセクションが存在しない場合: Triggerで選択後すぐ表示
+  // - Conditionalセクションが存在する場合: Conditionalが表示された後に表示
+  const shouldShowCommonFinal = !hasConditionalSections || hasVisibleConditional
 
   // 合計金額を計算
   const totalPrice = calculateTotalPrice(selectedItemIds, allItems)
@@ -214,23 +236,24 @@ export default function CustomerFormPageV3() {
             )}
 
             {/* Common Finalセクション */}
-            {visibleCategories.some((cat) => cat.form_section === 'common_final') && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">追加オプション</h2>
-                {visibleCategories
-                  .filter((cat) => cat.form_section === 'common_final')
-                  .map((category) => (
-                    <ProductCategorySection
-                      key={category.id}
-                      category={category}
-                      items={allItems.filter((item) => item.product_category_id === category.id)}
-                      selectedItemIds={selectedItemIds}
-                      onFieldChange={handleFieldChange}
-                      onItemSelectionChange={handleItemSelectionChange}
-                    />
-                  ))}
-              </div>
-            )}
+            {shouldShowCommonFinal &&
+              visibleCategories.some((cat) => cat.form_section === 'common_final') && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">追加オプション</h2>
+                  {visibleCategories
+                    .filter((cat) => cat.form_section === 'common_final')
+                    .map((category) => (
+                      <ProductCategorySection
+                        key={category.id}
+                        category={category}
+                        items={allItems.filter((item) => item.product_category_id === category.id)}
+                        selectedItemIds={selectedItemIds}
+                        onFieldChange={handleFieldChange}
+                        onItemSelectionChange={handleItemSelectionChange}
+                      />
+                    ))}
+                </div>
+              )}
 
             {/* 合計金額表示 */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 sticky bottom-0">
