@@ -24,10 +24,14 @@ export default function CustomerFormPageV3() {
 
   const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
   const [selectedShootingCategoryId, setSelectedShootingCategoryId] = useState<number | null>(null)
-  const [selectedShootingCategory, setSelectedShootingCategory] = useState<ShootingCategory | null>(null)
 
   const [productCategories, setProductCategories] = useState<ProductCategoryV3[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
+  const [formMetadata, setFormMetadata] = useState<{
+    heading_trigger?: string
+    heading_conditional?: string
+    heading_common_final?: string
+  } | null>(null)
 
   const [formValues, setFormValues] = useState<FormValues>({})
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([])
@@ -45,12 +49,9 @@ export default function CustomerFormPageV3() {
   // 撮影カテゴリ変更時、商品カテゴリとアイテムを取得
   useEffect(() => {
     if (selectedShootingCategoryId) {
-      // 選択された撮影カテゴリの詳細を保存
-      const category = shootingCategories.find((c) => c.id === selectedShootingCategoryId)
-      setSelectedShootingCategory(category || null)
       loadFormData(selectedShootingCategoryId)
     }
-  }, [selectedShootingCategoryId, shootingCategories])
+  }, [selectedShootingCategoryId])
 
   // フォームデータ読み込み後、自動スクロール
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function CustomerFormPageV3() {
         // FormBuilderデータが存在しない場合は空に
         setProductCategories([])
         setAllItems([])
+        setFormMetadata(null)
         return
       }
 
@@ -107,6 +109,7 @@ export default function CustomerFormPageV3() {
 
       setProductCategories(categories)
       setAllItems(items)
+      setFormMetadata(formBuilderRecord.form_data.metadata || null)
 
       // フォームをリセット
       setFormValues({})
@@ -179,9 +182,9 @@ export default function CustomerFormPageV3() {
   // リセット処理
   const handleReset = () => {
     setSelectedShootingCategoryId(null)
-    setSelectedShootingCategory(null)
     setProductCategories([])
     setAllItems([])
+    setFormMetadata(null)
     setFormValues({})
     setSelectedItemIds([])
   }
@@ -273,7 +276,7 @@ export default function CustomerFormPageV3() {
               {hasTrigger && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                    {selectedShootingCategory?.heading_trigger || '基本情報'}
+                    {formMetadata?.heading_trigger || '基本情報'}
                   </h2>
                   {visibleCategories
                     .filter((cat) => cat.form_section === 'trigger')
@@ -294,7 +297,7 @@ export default function CustomerFormPageV3() {
               {visibleCategories.some((cat) => cat.form_section === 'conditional') && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                    {selectedShootingCategory?.heading_conditional || 'オプション'}
+                    {formMetadata?.heading_conditional || 'オプション'}
                   </h2>
                   {visibleCategories
                     .filter((cat) => cat.form_section === 'conditional')
@@ -316,7 +319,7 @@ export default function CustomerFormPageV3() {
                 visibleCategories.some((cat) => cat.form_section === 'common_final') && (
                   <div className="mb-8">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                      {selectedShootingCategory?.heading_common_final || '追加オプション'}
+                      {formMetadata?.heading_common_final || '追加オプション'}
                     </h2>
                     {visibleCategories
                       .filter((cat) => cat.form_section === 'common_final')
