@@ -56,9 +56,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formImageUrl, setFormImageUrl] = useState('')
-  const [formHeadingTrigger, setFormHeadingTrigger] = useState('')
-  const [formHeadingConditional, setFormHeadingConditional] = useState('')
-  const [formHeadingCommonFinal, setFormHeadingCommonFinal] = useState('')
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -142,9 +139,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
       display_name: formDisplayName,
       description: formDescription || null,
       image_url: formImageUrl || null,
-      heading_trigger: formHeadingTrigger || null,
-      heading_conditional: formHeadingConditional || null,
-      heading_common_final: formHeadingCommonFinal || null,
       sort_order: draftShooting.length,
       is_active: true,
       created_at: now,
@@ -213,9 +207,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
               display_name: formDisplayName,
               description: formDescription || null,
               image_url: formImageUrl || null,
-              heading_trigger: formHeadingTrigger || null,
-              heading_conditional: formHeadingConditional || null,
-              heading_common_final: formHeadingCommonFinal || null,
               updated_at: new Date().toISOString(),
             }
           : cat
@@ -325,9 +316,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDisplayName('')
     setFormDescription('')
     setFormImageUrl('')
-    setFormHeadingTrigger('')
-    setFormHeadingConditional('')
-    setFormHeadingCommonFinal('')
     setFormPrice(0)
     setFormAutoSelect(false)
     setEditingShootingId(null)
@@ -343,9 +331,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDisplayName(category.display_name)
     setFormDescription(category.description || '')
     setFormImageUrl(category.image_url || '')
-    setFormHeadingTrigger(category.heading_trigger || '')
-    setFormHeadingConditional(category.heading_conditional || '')
-    setFormHeadingCommonFinal(category.heading_common_final || '')
     setEditingShootingId(category.id)
   }
 
@@ -420,9 +405,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             display_name: draft.display_name,
             description: draft.description || undefined,
             image_url: draft.image_url || undefined,
-            heading_trigger: draft.heading_trigger || undefined,
-            heading_conditional: draft.heading_conditional || undefined,
-            heading_common_final: draft.heading_common_final || undefined,
           })
         } else if (JSON.stringify(published) !== JSON.stringify(draft)) {
           // 更新
@@ -431,9 +413,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             display_name: draft.display_name,
             description: draft.description || undefined,
             image_url: draft.image_url || undefined,
-            heading_trigger: draft.heading_trigger || undefined,
-            heading_conditional: draft.heading_conditional || undefined,
-            heading_common_final: draft.heading_common_final || undefined,
             sort_order: draft.sort_order,
           })
         }
@@ -698,52 +677,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-              </div>
-
-              {/* セクション見出し設定 */}
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">フォーム見出し設定</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      基本情報セクション
-                    </label>
-                    <input
-                      type="text"
-                      value={formHeadingTrigger}
-                      onChange={(e) => setFormHeadingTrigger(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                      placeholder="基本情報（デフォルト）"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      オプションセクション
-                    </label>
-                    <input
-                      type="text"
-                      value={formHeadingConditional}
-                      onChange={(e) => setFormHeadingConditional(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                      placeholder="オプション（デフォルト）"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      追加オプションセクション
-                    </label>
-                    <input
-                      type="text"
-                      value={formHeadingCommonFinal}
-                      onChange={(e) => setFormHeadingCommonFinal(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                      placeholder="追加オプション（デフォルト）"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    ※空欄の場合はデフォルトの見出しが表示されます
-                  </p>
-                </div>
               </div>
 
               <div className="flex gap-2">

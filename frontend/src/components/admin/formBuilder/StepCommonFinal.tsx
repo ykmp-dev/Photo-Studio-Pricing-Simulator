@@ -170,8 +170,36 @@ export default function StepCommonFinal({ formData, onUpdate, onNext, onBack }: 
     }
   }
 
+  const handleHeadingChange = (heading: string) => {
+    const updatedFormData = {
+      ...formData,
+      metadata: {
+        ...formData.metadata,
+        heading_common_final: heading
+      }
+    }
+    onUpdate(updatedFormData)
+  }
+
   return (
     <div className="space-y-6">
+      {/* 見出しカスタマイズ */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          このセクションの見出し（お客様向けフォームに表示されます）
+        </label>
+        <input
+          type="text"
+          value={formData.metadata?.heading_common_final || ''}
+          onChange={(e) => handleHeadingChange(e.target.value)}
+          placeholder="追加オプション"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          未入力の場合は「追加オプション」と表示されます
+        </p>
+      </div>
+
       {/* 既存のcommon_final項目一覧 */}
       {commonFinalSteps.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
