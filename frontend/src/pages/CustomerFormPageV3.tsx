@@ -5,9 +5,12 @@ import { getFormBuilderDataByShootingCategory } from '../services/formBuilderSer
 import { convertFormBuilderToCustomerForm } from '../utils/formBuilderConverter'
 import { filterVisibleCategories, hasTriggerSections } from '../utils/sectionLogic'
 import { calculateTotalPrice } from '../utils/formHelpers'
+import { formatPrice } from '../utils/priceCalculator'
 import type { ProductCategoryV3, FormValues } from '../types/formV3'
 import type { ShootingCategory, Item } from '../types/category'
 import ProductCategorySection from '../components/customer/ProductCategorySection'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
 
 /**
  * v3仕様書: 顧客向けフォームページ
@@ -153,95 +156,79 @@ export default function CustomerFormPageV3() {
   // 合計金額を計算
   const totalPrice = calculateTotalPrice(selectedItemIds, allItems)
 
+  // リセット処理
+  const handleReset = () => {
+    setSelectedShootingCategoryId(null)
+    setProductCategories([])
+    setAllItems([])
+    setFormValues({})
+    setSelectedItemIds([])
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">撮影プラン料金シミュレーター</h1>
+    <div className="min-h-screen bg-ivory-500">
+      <Header />
 
-        {/* 撮影カテゴリ選択 */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            撮影カテゴリを選択してください
-          </label>
-          <select
-            value={selectedShootingCategoryId || ''}
-            onChange={(e) => setSelectedShootingCategoryId(parseInt(e.target.value))}
-            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">-- 選択してください --</option>
-            {shootingCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.display_name}
-              </option>
-            ))}
-          </select>
+      {/* Hero Section */}
+      <section className="relative py-8 md:py-12 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <div className="diamond-icon mx-auto mb-4"></div>
+          <h1 className="section-title text-gray-800 mb-3">料金シミュレーション</h1>
+          <div className="accent-line"></div>
+          <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
+            ご希望の撮影メニューをお選びください。
+          </p>
         </div>
+      </section>
 
-        {/* フォームコンテンツ */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="text-gray-600">読み込み中...</div>
+      {/* Main Content Section */}
+      <section className="py-6 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* 撮影カテゴリ選択 */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <label className="block text-base font-semibold text-gray-800 mb-2">
+              撮影メニューをお選びください
+            </label>
+            <select
+              value={selectedShootingCategoryId || ''}
+              onChange={(e) => setSelectedShootingCategoryId(parseInt(e.target.value))}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+            >
+              <option value="">選択してください</option>
+              {shootingCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.display_name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <p className="text-yellow-800">
-              この撮影カテゴリのフォームはまだ作成されていません。
-            </p>
-            <p className="text-sm text-yellow-600 mt-2">
-              管理画面のフォームビルダーで先にフォームを作成してください。
-            </p>
-          </div>
-        )}
+          {/* フォームコンテンツ */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="text-gray-600">読み込み中...</div>
+            </div>
+          )}
 
-        {!loading && selectedShootingCategoryId && productCategories.length > 0 && (
-          <>
-            {/* Triggerセクション */}
-            {hasTrigger && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">基本情報</h2>
-                {visibleCategories
-                  .filter((cat) => cat.form_section === 'trigger')
-                  .map((category) => (
-                    <ProductCategorySection
-                      key={category.id}
-                      category={category}
-                      items={allItems.filter((item) => item.product_category_id === category.id)}
-                      selectedItemIds={selectedItemIds}
-                      onFieldChange={handleFieldChange}
-                      onItemSelectionChange={handleItemSelectionChange}
-                    />
-                  ))}
-              </div>
-            )}
+          {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+              <p className="text-yellow-800">
+                この撮影カテゴリのフォームはまだ作成されていません。
+              </p>
+              <p className="text-sm text-yellow-600 mt-2">
+                管理画面のフォームビルダーで先にフォームを作成してください。
+              </p>
+            </div>
+          )}
 
-            {/* Conditionalセクション */}
-            {visibleCategories.some((cat) => cat.form_section === 'conditional') && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">オプション</h2>
-                {visibleCategories
-                  .filter((cat) => cat.form_section === 'conditional')
-                  .map((category) => (
-                    <ProductCategorySection
-                      key={category.id}
-                      category={category}
-                      items={allItems.filter((item) => item.product_category_id === category.id)}
-                      selectedItemIds={selectedItemIds}
-                      onFieldChange={handleFieldChange}
-                      onItemSelectionChange={handleItemSelectionChange}
-                    />
-                  ))}
-              </div>
-            )}
-
-            {/* Common Finalセクション */}
-            {shouldShowCommonFinal &&
-              visibleCategories.some((cat) => cat.form_section === 'common_final') && (
+          {!loading && selectedShootingCategoryId && productCategories.length > 0 && (
+            <>
+              {/* Triggerセクション */}
+              {hasTrigger && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">追加オプション</h2>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">基本情報</h2>
                   {visibleCategories
-                    .filter((cat) => cat.form_section === 'common_final')
+                    .filter((cat) => cat.form_section === 'trigger')
                     .map((category) => (
                       <ProductCategorySection
                         key={category.id}
@@ -255,19 +242,85 @@ export default function CustomerFormPageV3() {
                 </div>
               )}
 
-            {/* 合計金額表示 */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 sticky bottom-0">
-              <div className="text-center">
-                <div className="text-sm text-gray-600 mb-1">合計金額</div>
-                <div className="text-4xl font-bold text-blue-600">
-                  ¥{totalPrice.toLocaleString()}
-                  <span className="text-lg text-gray-600 ml-2">(税込)</span>
+              {/* Conditionalセクション */}
+              {visibleCategories.some((cat) => cat.form_section === 'conditional') && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">オプション</h2>
+                  {visibleCategories
+                    .filter((cat) => cat.form_section === 'conditional')
+                    .map((category) => (
+                      <ProductCategorySection
+                        key={category.id}
+                        category={category}
+                        items={allItems.filter((item) => item.product_category_id === category.id)}
+                        selectedItemIds={selectedItemIds}
+                        onFieldChange={handleFieldChange}
+                        onItemSelectionChange={handleItemSelectionChange}
+                      />
+                    ))}
+                </div>
+              )}
+
+              {/* Common Finalセクション */}
+              {shouldShowCommonFinal &&
+                visibleCategories.some((cat) => cat.form_section === 'common_final') && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">追加オプション</h2>
+                    {visibleCategories
+                      .filter((cat) => cat.form_section === 'common_final')
+                      .map((category) => (
+                        <ProductCategorySection
+                          key={category.id}
+                          category={category}
+                          items={allItems.filter((item) => item.product_category_id === category.id)}
+                          selectedItemIds={selectedItemIds}
+                          onFieldChange={handleFieldChange}
+                          onItemSelectionChange={handleItemSelectionChange}
+                        />
+                      ))}
+                  </div>
+                )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Price Summary - Sticky Bottom */}
+      {selectedItemIds.length > 0 && (
+        <div className="sticky bottom-0 bg-white border-t-2 border-blue-300 shadow-xl z-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="border-t-2 border-blue-400 pt-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold text-gray-800">合計</span>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-blue-600">
+                    {formatPrice(totalPrice)}
+                  </div>
+                  <div className="text-xs text-gray-500">（税込）</div>
                 </div>
               </div>
             </div>
-          </>
-        )}
-      </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleReset}
+                className="px-4 py-3 border-2 border-gray-400 text-gray-700 font-semibold rounded-md hover:bg-gray-50 transition-colors"
+              >
+                やり直す
+              </button>
+              <button className="px-4 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors">
+                ご予約はこちら
+              </button>
+            </div>
+
+            <p className="text-xs text-center text-gray-500 mt-3">
+              ※撮影する家族の人数や衣装、キャンペーン適用などで金額が異なる場合がございます。
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Footer />
     </div>
   )
 }
