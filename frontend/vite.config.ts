@@ -3,9 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.NODE_ENV === 'production'
-    ? '/Photo-Studio-Pricing-Simulator/'
-    : '/',
+  base: process.env.VITE_BASE_PATH ||
+    (process.env.NODE_ENV === 'production' ? '/Photo-Studio-Pricing-Simulator/' : '/'),
   server: {
     port: 3000,
     proxy: {
