@@ -8,9 +8,6 @@ export interface ShootingCategory {
   display_name: string
   description: string | null
   image_url: string | null
-  heading_trigger: string | null
-  heading_conditional: string | null
-  heading_common_final: string | null
   sort_order: number
   is_active: boolean
   created_at: string
@@ -69,9 +66,6 @@ export interface CreateShootingCategory {
   display_name: string
   description?: string
   image_url?: string
-  heading_trigger?: string
-  heading_conditional?: string
-  heading_common_final?: string
   sort_order?: number
   is_active?: boolean
 }
@@ -120,9 +114,6 @@ export interface UpdateShootingCategory {
   display_name?: string
   description?: string
   image_url?: string
-  heading_trigger?: string
-  heading_conditional?: string
-  heading_common_final?: string
   sort_order?: number
   is_active?: boolean
 }

@@ -206,8 +206,36 @@ export default function StepConditional({ formData, onUpdate, onNext, onBack }: 
     ? triggerSteps.find((s) => s.category.id === selectedField)?.category.items || []
     : []
 
+  const handleHeadingChange = (heading: string) => {
+    const updatedFormData = {
+      ...formData,
+      metadata: {
+        ...formData.metadata,
+        heading_conditional: heading
+      }
+    }
+    onUpdate(updatedFormData)
+  }
+
   return (
     <div className="space-y-6">
+      {/* 見出しカスタマイズ */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          このセクションの見出し（お客様向けフォームに表示されます）
+        </label>
+        <input
+          type="text"
+          value={formData.metadata?.heading_conditional || ''}
+          onChange={(e) => handleHeadingChange(e.target.value)}
+          placeholder="オプション"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          未入力の場合は「オプション」と表示されます
+        </p>
+      </div>
+
       {/* 既存の分岐設定一覧 */}
       {conditionalSteps.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
