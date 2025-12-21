@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getFormBuilderDataByShootingCategory } from '../services/formBuilderService'
@@ -24,6 +24,7 @@ export default function CustomerFormPageV3() {
 
   const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
   const [selectedShootingCategoryId, setSelectedShootingCategoryId] = useState<number | null>(null)
+  const [selectedShootingCategory, setSelectedShootingCategory] = useState<ShootingCategory | null>(null)
 
   const [productCategories, setProductCategories] = useState<ProductCategoryV3[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
@@ -33,6 +34,9 @@ export default function CustomerFormPageV3() {
 
   const [loading, setLoading] = useState(false)
 
+  // フォームコンテンツへの参照（自動スクロール用）
+  const formContentRef = useRef<HTMLDivElement>(null)
+
   // 撮影カテゴリ一覧を取得
   useEffect(() => {
     loadShootingCategories()
@@ -41,9 +45,25 @@ export default function CustomerFormPageV3() {
   // 撮影カテゴリ変更時、商品カテゴリとアイテムを取得
   useEffect(() => {
     if (selectedShootingCategoryId) {
+      // 選択された撮影カテゴリの詳細を保存
+      const category = shootingCategories.find((c) => c.id === selectedShootingCategoryId)
+      setSelectedShootingCategory(category || null)
       loadFormData(selectedShootingCategoryId)
     }
-  }, [selectedShootingCategoryId])
+  }, [selectedShootingCategoryId, shootingCategories])
+
+  // フォームデータ読み込み後、自動スクロール
+  useEffect(() => {
+    if (!loading && selectedShootingCategoryId && productCategories.length > 0 && formContentRef.current) {
+      // 少し遅延させてからスクロール（レンダリング完了を待つ）
+      setTimeout(() => {
+        formContentRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      }, 100)
+    }
+  }, [loading, selectedShootingCategoryId, productCategories])
 
   const loadShootingCategories = async () => {
     if (!shopId) return
@@ -159,6 +179,7 @@ export default function CustomerFormPageV3() {
   // リセット処理
   const handleReset = () => {
     setSelectedShootingCategoryId(null)
+    setSelectedShootingCategory(null)
     setProductCategories([])
     setAllItems([])
     setFormValues({})
@@ -228,13 +249,14 @@ export default function CustomerFormPageV3() {
           </div>
 
           {/* フォームコンテンツ */}
-          {loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-600">読み込み中...</div>
-            </div>
-          )}
+          <div ref={formContentRef}>
+            {loading && (
+              <div className="text-center py-12">
+                <div className="text-gray-600">読み込み中...</div>
+              </div>
+            )}
 
-          {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
+            {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
               <p className="text-yellow-800">
                 この撮影カテゴリのフォームはまだ作成されていません。
@@ -250,7 +272,9 @@ export default function CustomerFormPageV3() {
               {/* Triggerセクション */}
               {hasTrigger && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">基本情報</h2>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                    {selectedShootingCategory?.heading_trigger || '基本情報'}
+                  </h2>
                   {visibleCategories
                     .filter((cat) => cat.form_section === 'trigger')
                     .map((category) => (
@@ -269,7 +293,9 @@ export default function CustomerFormPageV3() {
               {/* Conditionalセクション */}
               {visibleCategories.some((cat) => cat.form_section === 'conditional') && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">オプション</h2>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                    {selectedShootingCategory?.heading_conditional || 'オプション'}
+                  </h2>
                   {visibleCategories
                     .filter((cat) => cat.form_section === 'conditional')
                     .map((category) => (
@@ -289,7 +315,9 @@ export default function CustomerFormPageV3() {
               {shouldShowCommonFinal &&
                 visibleCategories.some((cat) => cat.form_section === 'common_final') && (
                   <div className="mb-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">追加オプション</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                      {selectedShootingCategory?.heading_common_final || '追加オプション'}
+                    </h2>
                     {visibleCategories
                       .filter((cat) => cat.form_section === 'common_final')
                       .map((category) => (
@@ -306,6 +334,7 @@ export default function CustomerFormPageV3() {
                 )}
             </>
           )}
+          </div>
         </div>
       </section>
 
