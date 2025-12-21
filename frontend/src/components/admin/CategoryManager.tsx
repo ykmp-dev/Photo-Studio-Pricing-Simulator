@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   getShootingCategories,
   getProductCategories,
@@ -13,6 +13,7 @@ import {
   deleteProductCategory,
   deleteItem,
 } from '../../services/categoryService'
+import { uploadImage, validateImageFile } from '../../services/storageService'
 import type { ShootingCategory, ProductCategory, Item } from '../../types/category'
 import { getErrorMessage } from '../../utils/errorMessages'
 
@@ -54,8 +55,13 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   const [formName, setFormName] = useState('')
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formDescription, setFormDescription] = useState('')
+  const [formImageUrl, setFormImageUrl] = useState('')
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  // ファイルinput参照
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 変更通知
   useEffect(() => {
@@ -132,6 +138,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
       name: formName,
       display_name: formDisplayName,
       description: formDescription || null,
+      image_url: formImageUrl || null,
       sort_order: draftShooting.length,
       is_active: true,
       created_at: now,
@@ -199,6 +206,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
               name: formName,
               display_name: formDisplayName,
               description: formDescription || null,
+              image_url: formImageUrl || null,
               updated_at: new Date().toISOString(),
             }
           : cat
@@ -307,17 +315,22 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormName('')
     setFormDisplayName('')
     setFormDescription('')
+    setFormImageUrl('')
     setFormPrice(0)
     setFormAutoSelect(false)
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const startEditShooting = (category: ShootingCategory) => {
     setFormName(category.name)
     setFormDisplayName(category.display_name)
     setFormDescription(category.description || '')
+    setFormImageUrl(category.image_url || '')
     setEditingShootingId(category.id)
   }
 
@@ -336,6 +349,46 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setEditingItemId(item.id)
   }
 
+  // 画像アップロードハンドラー
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // バリデーション
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.error)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      const imageUrl = await uploadImage(file)
+      setFormImageUrl(imageUrl)
+      alert('画像をアップロードしました')
+    } catch (err) {
+      console.error('画像アップロードエラー:', err)
+      alert(getErrorMessage(err))
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  // 画像削除ハンドラー
+  const handleRemoveImage = () => {
+    if (!confirm('画像を削除しますか？')) return
+    setFormImageUrl('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   // 下書きを本番に反映（データベースに保存）
   const handlePublish = async () => {
     if (!confirm('変更を保存しますか？')) return
@@ -351,6 +404,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             name: draft.name,
             display_name: draft.display_name,
             description: draft.description || undefined,
+            image_url: draft.image_url || undefined,
           })
         } else if (JSON.stringify(published) !== JSON.stringify(draft)) {
           // 更新
@@ -358,6 +412,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             name: draft.name,
             display_name: draft.display_name,
             description: draft.description || undefined,
+            image_url: draft.image_url || undefined,
             sort_order: draft.sort_order,
           })
         }
@@ -568,6 +623,61 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   rows={3}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  カテゴリ画像
+                </label>
+                {formImageUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative w-full h-40 border border-gray-300 rounded-lg overflow-hidden">
+                      <img
+                        src={formImageUrl}
+                        alt="プレビュー"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="flex-1 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      >
+                        画像を変更
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        disabled={uploadingImage}
+                        className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600 disabled:opacity-50"
+                    >
+                      {uploadingImage ? 'アップロード中...' : '+ 画像をアップロード'}
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">
+                      JPEG、PNG、GIF、WebP（最大5MB）
+                    </p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
               <div className="flex gap-2">
                 {editingShootingId ? (
                   <>
@@ -607,8 +717,8 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   key={category.id}
                   className="border rounded-lg p-4 border-gray-200"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1">
                       <div className="flex flex-col gap-1">
                         <button
                           onClick={() => moveShooting(index, 'up')}
@@ -627,6 +737,15 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                           ↓
                         </button>
                       </div>
+                      {category.image_url && (
+                        <div className="w-16 h-16 border border-gray-200 rounded overflow-hidden flex-shrink-0">
+                          <img
+                            src={category.image_url}
+                            alt={category.display_name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-800">{category.display_name}</h4>
                         <p className="text-sm text-gray-500">キー: {category.name}</p>
