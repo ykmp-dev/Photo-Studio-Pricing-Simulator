@@ -71,7 +71,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   // データ読み込み
   useEffect(() => {
     loadData()
-  }, [shopId])
+  }, [shopId, view])
 
   useEffect(() => {
     if (view === 'items') {
