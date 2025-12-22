@@ -117,12 +117,12 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       is_active: formIsActive,
       created_at: now,
       updated_at: now,
-      // 関連情報を一時的に保存（実際のDB型とは異なるが、下書き用）
+      // 関連情報を一時的に保存
       associations: {
         shooting_category_ids: [], // 撮影カテゴリは使用しない
         product_category_ids: selectedProductIds,
         item_ids: selectedItemIds,
-      } as any,
+      },
     }
 
     setDraftCampaigns([...draftCampaigns, newCampaign])
@@ -149,7 +149,7 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
             shooting_category_ids: [], // 撮影カテゴリは使用しない
             product_category_ids: selectedProductIds,
             item_ids: selectedItemIds,
-          } as any,
+          },
         }
       }
       return campaign
@@ -165,10 +165,11 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       // 下書きから探す
       let campaign = draftCampaigns.find((c) => c.id === campaignId)
 
-      // 下書きになければ、DBから取得して下書きに追加
+      // 下書きになければ、DBから取得
       if (!campaign) {
-        campaign = await getCampaignWithAssociations(campaignId)
-        if (!campaign) return
+        const fetchedCampaign = await getCampaignWithAssociations(campaignId)
+        if (!fetchedCampaign) return
+        campaign = fetchedCampaign
       }
 
       setEditingCampaignId(campaignId)
@@ -178,8 +179,8 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       setFormDiscountType(campaign.discount_type)
       setFormDiscountValue(campaign.discount_value)
       setFormIsActive(campaign.is_active)
-      setSelectedProductIds((campaign as any).associations?.product_category_ids || [])
-      setSelectedItemIds((campaign as any).associations?.item_ids || [])
+      setSelectedProductIds(campaign.associations?.product_category_ids || [])
+      setSelectedItemIds(campaign.associations?.item_ids || [])
       setShowForm(true)
     } catch (err) {
       console.error(err)
@@ -227,8 +228,8 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
             },
             {
               shooting_category_ids: [], // 撮影カテゴリは使用しない
-              product_category_ids: (draft as any).associations?.product_category_ids || [],
-              item_ids: (draft as any).associations?.item_ids || [],
+              product_category_ids: draft.associations?.product_category_ids || [],
+              item_ids: draft.associations?.item_ids || [],
             }
           )
         } else {
@@ -245,8 +246,8 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
             draft.id,
             {
               shooting_category_ids: [], // 撮影カテゴリは使用しない
-              product_category_ids: (draft as any).associations?.product_category_ids || [],
-              item_ids: (draft as any).associations?.item_ids || [],
+              product_category_ids: draft.associations?.product_category_ids || [],
+              item_ids: draft.associations?.item_ids || [],
             }
           )
         }
