@@ -20,10 +20,17 @@ interface CampaignManagerProps {
 }
 
 export default function CampaignManager({ shopId, onHasChanges }: CampaignManagerProps) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  // 本番データ（データベースから読み込んだ状態）
+  const [publishedCampaigns, setPublishedCampaigns] = useState<Campaign[]>([])
+
+  // 下書きデータ（編集中の状態）
+  const [draftCampaigns, setDraftCampaigns] = useState<Campaign[]>([])
+
   const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
   const [editingCampaignId, setEditingCampaignId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
+
+  // 変更フラグ（下書きと本番の差分があるか）
   const [hasChanges, setHasChanges] = useState(false)
 
   // フォーム値
@@ -58,8 +65,10 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
         getCampaigns(shopId),
         getAllCategoryStructure(shopId),
       ])
-      setCampaigns(campaignsData)
+      setPublishedCampaigns(campaignsData)
+      setDraftCampaigns(campaignsData)
       setCategoryStructure(structureData)
+      setHasChanges(false)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
     }
@@ -77,66 +86,79 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
     setSelectedItemIds([])
     setEditingCampaignId(null)
     setShowForm(false)
-    setHasChanges(false)
   }
 
-  const handleCreateCampaign = async (e: React.FormEvent) => {
+  const handleCreateCampaign = (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      await createCampaignWithAssociations(
-        {
-          shop_id: shopId,
+
+    // 下書きに新規キャンペーンを追加
+    const newId = -Math.floor(Math.random() * 1000000) // 負の値でテンポラリIDを作成
+    const now = new Date().toISOString()
+
+    const newCampaign: Campaign = {
+      id: newId,
+      shop_id: shopId,
+      name: formName,
+      start_date: formStartDate,
+      end_date: formEndDate,
+      discount_type: formDiscountType,
+      discount_value: formDiscountValue,
+      is_active: formIsActive,
+      created_at: now,
+      updated_at: now,
+      // 関連情報を一時的に保存（実際のDB型とは異なるが、下書き用）
+      associations: {
+        shooting_category_ids: selectedShootingIds,
+        product_category_ids: selectedProductIds,
+        item_ids: selectedItemIds,
+      } as any,
+    }
+
+    setDraftCampaigns([...draftCampaigns, newCampaign])
+    setHasChanges(true)
+    resetForm()
+  }
+
+  const handleUpdateCampaign = () => {
+    if (!editingCampaignId) return
+
+    // 下書き内のキャンペーンを更新
+    const updatedCampaigns = draftCampaigns.map((campaign) => {
+      if (campaign.id === editingCampaignId) {
+        return {
+          ...campaign,
           name: formName,
           start_date: formStartDate,
           end_date: formEndDate,
           discount_type: formDiscountType,
           discount_value: formDiscountValue,
           is_active: formIsActive,
-        },
-        {
-          shooting_category_ids: selectedShootingIds,
-          product_category_ids: selectedProductIds,
-          item_ids: selectedItemIds,
+          updated_at: new Date().toISOString(),
+          associations: {
+            shooting_category_ids: selectedShootingIds,
+            product_category_ids: selectedProductIds,
+            item_ids: selectedItemIds,
+          } as any,
         }
-      )
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('create', 'キャンペーン'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
-  }
+      }
+      return campaign
+    })
 
-  const handleUpdateCampaign = async () => {
-    if (!editingCampaignId) return
-    try {
-      await updateCampaign(editingCampaignId, {
-        name: formName,
-        start_date: formStartDate,
-        end_date: formEndDate,
-        discount_type: formDiscountType,
-        discount_value: formDiscountValue,
-        is_active: formIsActive,
-      })
-      await updateCampaignAssociations(editingCampaignId, {
-        shooting_category_ids: selectedShootingIds,
-        product_category_ids: selectedProductIds,
-        item_ids: selectedItemIds,
-      })
-      resetForm()
-      await loadData()
-      alert(getSuccessMessage('update', 'キャンペーン'))
-    } catch (err) {
-      console.error(err)
-      alert(getErrorMessage(err))
-    }
+    setDraftCampaigns(updatedCampaigns)
+    setHasChanges(true)
+    resetForm()
   }
 
   const handleEditCampaign = async (campaignId: number) => {
     try {
-      const campaign = await getCampaignWithAssociations(campaignId)
-      if (!campaign) return
+      // 下書きから探す
+      let campaign = draftCampaigns.find((c) => c.id === campaignId)
+
+      // 下書きになければ、DBから取得して下書きに追加
+      if (!campaign) {
+        campaign = await getCampaignWithAssociations(campaignId)
+        if (!campaign) return
+      }
 
       setEditingCampaignId(campaignId)
       setFormName(campaign.name)
@@ -145,27 +167,95 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       setFormDiscountType(campaign.discount_type)
       setFormDiscountValue(campaign.discount_value)
       setFormIsActive(campaign.is_active)
-      setSelectedShootingIds(campaign.associations.shooting_category_ids)
-      setSelectedProductIds(campaign.associations.product_category_ids)
-      setSelectedItemIds(campaign.associations.item_ids)
+      setSelectedShootingIds((campaign as any).associations?.shooting_category_ids || [])
+      setSelectedProductIds((campaign as any).associations?.product_category_ids || [])
+      setSelectedItemIds((campaign as any).associations?.item_ids || [])
       setShowForm(true)
-      setHasChanges(true)
     } catch (err) {
       console.error(err)
       alert(getErrorMessage(err))
     }
   }
 
-  const handleDeleteCampaign = async (id: number, name: string) => {
-    if (!confirm(`「${name}」を削除しますか？`)) return
+  const handleDeleteCampaign = (id: number, name: string) => {
+    if (!confirm(`「${name}」を削除しますか？\n（「更新」ボタンを押すまで削除は確定されません）`)) return
+
+    // 下書きから削除
+    const updatedCampaigns = draftCampaigns.filter((c) => c.id !== id)
+    setDraftCampaigns(updatedCampaigns)
+    setHasChanges(true)
+  }
+
+  // 下書きを本番に反映（データベースに保存）
+  const handlePublish = async () => {
+    if (!confirm('変更を保存しますか？')) return
+
     try {
-      await deleteCampaign(id)
+      // 削除されたキャンペーンを処理
+      const deletedCampaigns = publishedCampaigns.filter(
+        (pub) => !draftCampaigns.find((draft) => draft.id === pub.id)
+      )
+      for (const campaign of deletedCampaigns) {
+        await deleteCampaign(campaign.id)
+      }
+
+      // 新規・更新されたキャンペーンを処理
+      for (const draft of draftCampaigns) {
+        const isNew = draft.id < 0
+
+        if (isNew) {
+          // 新規作成
+          await createCampaignWithAssociations(
+            {
+              shop_id: shopId,
+              name: draft.name,
+              start_date: draft.start_date,
+              end_date: draft.end_date,
+              discount_type: draft.discount_type,
+              discount_value: draft.discount_value,
+              is_active: draft.is_active,
+            },
+            (draft as any).associations || {
+              shooting_category_ids: [],
+              product_category_ids: [],
+              item_ids: [],
+            }
+          )
+        } else {
+          // 既存キャンペーンの更新
+          await updateCampaign(draft.id, {
+            name: draft.name,
+            start_date: draft.start_date,
+            end_date: draft.end_date,
+            discount_type: draft.discount_type,
+            discount_value: draft.discount_value,
+            is_active: draft.is_active,
+          })
+          await updateCampaignAssociations(
+            draft.id,
+            (draft as any).associations || {
+              shooting_category_ids: [],
+              product_category_ids: [],
+              item_ids: [],
+            }
+          )
+        }
+      }
+
       await loadData()
-      alert(getSuccessMessage('delete', 'キャンペーン'))
+      alert(getSuccessMessage('update', 'キャンペーン'))
     } catch (err) {
       console.error(err)
       alert(getErrorMessage(err))
     }
+  }
+
+  // 下書きを破棄して本番データに戻す
+  const handleDiscard = () => {
+    if (!confirm('編集中の変更を破棄しますか？')) return
+    setDraftCampaigns([...publishedCampaigns])
+    setHasChanges(false)
+    resetForm()
   }
 
   const toggleShooting = (id: number) => {
@@ -206,22 +296,65 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
     )
   }
 
+  // キャンペーンごとのステータスを取得
+  const getCampaignStatus = (campaignId: number) => {
+    const draftCampaign = draftCampaigns.find((c) => c.id === campaignId)
+    const publishedCampaign = publishedCampaigns.find((c) => c.id === campaignId)
+
+    if (!draftCampaign && !publishedCampaign) {
+      return { status: 'none', badge: null }
+    }
+
+    if (draftCampaign && !publishedCampaign) {
+      return { status: 'draft', badge: '下書き' }
+    }
+
+    if (draftCampaign && publishedCampaign && JSON.stringify(draftCampaign) !== JSON.stringify(publishedCampaign)) {
+      return { status: 'modified', badge: '編集中' }
+    }
+
+    return { status: 'published', badge: null }
+  }
+
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">キャンペーン管理</h2>
-        {!showForm && (
-          <button
-            onClick={() => {
-              resetForm()
-              setShowForm(true)
-              setHasChanges(true)
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
-          >
-            + 新規キャンペーン作成
-          </button>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">キャンペーン管理</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            キャンペーンの割引設定を管理できます
+          </p>
+        </div>
+
+        {/* 更新・破棄ボタン */}
+        {hasChanges ? (
+          <div className="flex gap-3">
+            <button
+              onClick={handleDiscard}
+              className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+            >
+              変更を破棄
+            </button>
+            <button
+              onClick={handlePublish}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-md"
+            >
+              更新（本番に反映）
+            </button>
+          </div>
+        ) : (
+          !showForm && (
+            <button
+              onClick={() => {
+                resetForm()
+                setShowForm(true)
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+            >
+              + 新規キャンペーン作成
+            </button>
+          )
         )}
       </div>
 
@@ -229,7 +362,7 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       {hasChanges && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
           <p className="text-sm text-yellow-800">
-            ⚠️ 未保存の変更があります。フォームを送信するか、キャンセルしてください。
+            ⚠️ 未保存の変更があります。「更新」ボタンを押すまで変更は保存されません。
           </p>
         </div>
       )}
@@ -453,7 +586,7 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">キャンペーン一覧</h3>
 
-        {campaigns.length === 0 ? (
+        {draftCampaigns.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>キャンペーンがまだありません</p>
             <button
@@ -465,21 +598,36 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
           </div>
         ) : (
           <div className="space-y-3">
-            {campaigns.map((campaign) => (
-              <div key={campaign.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="text-lg font-semibold text-gray-800">{campaign.name}</h4>
-                      {campaign.is_active ? (
-                        <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded">
-                          有効
-                        </span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded">
-                          無効
-                        </span>
-                      )}
+            {draftCampaigns.map((campaign) => {
+              const campaignStatus = getCampaignStatus(campaign.id)
+              return (
+                <div key={campaign.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="text-lg font-semibold text-gray-800">{campaign.name}</h4>
+                        {campaign.is_active ? (
+                          <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded">
+                            有効
+                          </span>
+                        ) : (
+                          <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded">
+                            無効
+                          </span>
+                        )}
+                        {campaignStatus.badge && (
+                          <span
+                            className={`text-xs px-2 py-1 rounded font-medium ${
+                              campaignStatus.status === 'draft'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : campaignStatus.status === 'modified'
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {campaignStatus.badge}
+                          </span>
+                        )}
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>
@@ -511,7 +659,8 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
                   </div>
                 </div>
               </div>
-            ))}
+            )
+            })}
           </div>
         )}
       </div>
