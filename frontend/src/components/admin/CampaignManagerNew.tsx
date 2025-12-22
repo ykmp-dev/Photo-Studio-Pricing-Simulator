@@ -8,10 +8,11 @@ import {
   updateCampaignAssociations,
 } from '../../services/campaignService'
 import {
-  getAllCategoryStructure,
+  getProductCategories,
+  getItems,
 } from '../../services/categoryService'
 import type { Campaign } from '../../types/campaign'
-import type { ShootingCategoryWithProducts } from '../../types/category'
+import type { ProductCategory, Item } from '../../types/category'
 import { getErrorMessage, getSuccessMessage } from '../../utils/errorMessages'
 
 interface CampaignManagerProps {
@@ -26,7 +27,10 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
   // 下書きデータ（編集中の状態）
   const [draftCampaigns, setDraftCampaigns] = useState<Campaign[]>([])
 
-  const [categoryStructure, setCategoryStructure] = useState<ShootingCategoryWithProducts[]>([])
+  // 商品カテゴリとアイテム（フラット表示用）
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
+  const [allItems, setAllItems] = useState<Map<number, Item[]>>(new Map())
+
   const [editingCampaignId, setEditingCampaignId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
 
@@ -41,13 +45,11 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
   const [formDiscountValue, setFormDiscountValue] = useState(0)
   const [formIsActive, setFormIsActive] = useState(true)
 
-  // 選択された関連
-  const [selectedShootingIds, setSelectedShootingIds] = useState<number[]>([])
+  // 選択された関連（商品カテゴリとアイテムのみ）
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([])
 
-  // トグル状態
-  const [expandedShooting, setExpandedShooting] = useState<Set<number>>(new Set())
+  // トグル状態（商品カテゴリの展開/折りたたみ）
   const [expandedProduct, setExpandedProduct] = useState<Set<number>>(new Set())
 
   // 変更通知
@@ -61,13 +63,23 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
 
   const loadData = async () => {
     try {
-      const [campaignsData, structureData] = await Promise.all([
+      const [campaignsData, productCategoriesData] = await Promise.all([
         getCampaigns(shopId),
-        getAllCategoryStructure(shopId),
+        getProductCategories(shopId),
       ])
+
       setPublishedCampaigns(campaignsData)
       setDraftCampaigns(campaignsData)
-      setCategoryStructure(structureData)
+      setProductCategories(productCategoriesData)
+
+      // 各商品カテゴリのアイテムを読み込み
+      const itemsMap = new Map<number, Item[]>()
+      for (const category of productCategoriesData) {
+        const items = await getItems(shopId, category.id)
+        itemsMap.set(category.id, items)
+      }
+      setAllItems(itemsMap)
+
       setHasChanges(false)
     } catch (err) {
       console.error('データの読み込みに失敗しました:', err)
@@ -81,7 +93,6 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
     setFormDiscountType('percentage')
     setFormDiscountValue(0)
     setFormIsActive(true)
-    setSelectedShootingIds([])
     setSelectedProductIds([])
     setSelectedItemIds([])
     setEditingCampaignId(null)
@@ -108,7 +119,7 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       updated_at: now,
       // 関連情報を一時的に保存（実際のDB型とは異なるが、下書き用）
       associations: {
-        shooting_category_ids: selectedShootingIds,
+        shooting_category_ids: [], // 撮影カテゴリは使用しない
         product_category_ids: selectedProductIds,
         item_ids: selectedItemIds,
       } as any,
@@ -135,7 +146,7 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
           is_active: formIsActive,
           updated_at: new Date().toISOString(),
           associations: {
-            shooting_category_ids: selectedShootingIds,
+            shooting_category_ids: [], // 撮影カテゴリは使用しない
             product_category_ids: selectedProductIds,
             item_ids: selectedItemIds,
           } as any,
@@ -167,7 +178,6 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       setFormDiscountType(campaign.discount_type)
       setFormDiscountValue(campaign.discount_value)
       setFormIsActive(campaign.is_active)
-      setSelectedShootingIds((campaign as any).associations?.shooting_category_ids || [])
       setSelectedProductIds((campaign as any).associations?.product_category_ids || [])
       setSelectedItemIds((campaign as any).associations?.item_ids || [])
       setShowForm(true)
@@ -215,10 +225,10 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
               discount_value: draft.discount_value,
               is_active: draft.is_active,
             },
-            (draft as any).associations || {
-              shooting_category_ids: [],
-              product_category_ids: [],
-              item_ids: [],
+            {
+              shooting_category_ids: [], // 撮影カテゴリは使用しない
+              product_category_ids: (draft as any).associations?.product_category_ids || [],
+              item_ids: (draft as any).associations?.item_ids || [],
             }
           )
         } else {
@@ -233,10 +243,10 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
           })
           await updateCampaignAssociations(
             draft.id,
-            (draft as any).associations || {
-              shooting_category_ids: [],
-              product_category_ids: [],
-              item_ids: [],
+            {
+              shooting_category_ids: [], // 撮影カテゴリは使用しない
+              product_category_ids: (draft as any).associations?.product_category_ids || [],
+              item_ids: (draft as any).associations?.item_ids || [],
             }
           )
         }
@@ -258,16 +268,6 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
     resetForm()
   }
 
-  const toggleShooting = (id: number) => {
-    const newExpanded = new Set(expandedShooting)
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id)
-    } else {
-      newExpanded.add(id)
-    }
-    setExpandedShooting(newExpanded)
-  }
-
   const toggleProduct = (id: number) => {
     const newExpanded = new Set(expandedProduct)
     if (newExpanded.has(id)) {
@@ -276,12 +276,6 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
       newExpanded.add(id)
     }
     setExpandedProduct(newExpanded)
-  }
-
-  const handleToggleShooting = (id: number) => {
-    setSelectedShootingIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
   }
 
   const handleToggleProduct = (id: number) => {
@@ -460,41 +454,26 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
 
             {/* 適用対象選択 */}
             <div className="border-t pt-6">
-              <h4 className="text-md font-semibold text-gray-800 mb-3">適用対象を選択</h4>
+              <h4 className="text-md font-semibold text-gray-800 mb-3">割引を適用する商品を選択</h4>
               <p className="text-sm text-gray-600 mb-4">
-                チェックした撮影カテゴリ、商品カテゴリ、アイテムに割引が適用されます
+                チェックした商品カテゴリまたはアイテムに{formDiscountType === 'percentage' ? `${formDiscountValue}%` : `${formDiscountValue}円`}の割引が適用されます
               </p>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
-                {categoryStructure.map((shooting) => (
-                  <div key={shooting.id} className="mb-3 last:mb-0">
-                    {/* 撮影カテゴリ */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleShooting(shooting.id)}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        {expandedShooting.has(shooting.id) ? '▼' : '▶'}
-                      </button>
-                      <label className="flex items-center gap-2 font-medium text-gray-800">
-                        <input
-                          type="checkbox"
-                          checked={selectedShootingIds.includes(shooting.id)}
-                          onChange={() => handleToggleShooting(shooting.id)}
-                          className="w-4 h-4 text-blue-600 rounded"
-                        />
-                        {shooting.display_name}
-                      </label>
-                    </div>
-
-                    {/* 商品カテゴリとアイテム */}
-                    {expandedShooting.has(shooting.id) && (
-                      <div className="ml-6 space-y-2">
-                        {shooting.product_categories.map((product) => (
-                          <div key={product.id}>
-                            {/* 商品カテゴリ */}
-                            <div className="flex items-center gap-2">
+                {productCategories.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>商品カテゴリが登録されていません</p>
+                    <p className="text-xs mt-1">先に「カテゴリ・アイテム管理」タブで商品カテゴリを作成してください</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {productCategories.map((product) => {
+                      const items = allItems.get(product.id) || []
+                      return (
+                        <div key={product.id} className="border border-gray-200 rounded-lg p-3 bg-white">
+                          {/* 商品カテゴリ */}
+                          <div className="flex items-center gap-2 mb-2">
+                            {items.length > 0 && (
                               <button
                                 type="button"
                                 onClick={() => toggleProduct(product.id)}
@@ -502,42 +481,44 @@ export default function CampaignManager({ shopId, onHasChanges }: CampaignManage
                               >
                                 {expandedProduct.has(product.id) ? '▼' : '▶'}
                               </button>
-                              <label className="flex items-center gap-2 text-gray-700">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedProductIds.includes(product.id)}
-                                  onChange={() => handleToggleProduct(product.id)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                {product.display_name}
-                              </label>
-                            </div>
-
-                            {/* アイテム */}
-                            {expandedProduct.has(product.id) && product.items.length > 0 && (
-                              <div className="ml-6 mt-2 space-y-1">
-                                {product.items.map((item) => (
-                                  <label
-                                    key={item.id}
-                                    className="flex items-center gap-2 text-sm text-gray-600"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedItemIds.includes(item.id)}
-                                      onChange={() => handleToggleItem(item.id)}
-                                      className="w-3.5 h-3.5 text-blue-600 rounded"
-                                    />
-                                    {item.name} (¥{item.price.toLocaleString()})
-                                  </label>
-                                ))}
-                              </div>
                             )}
+                            <label className="flex items-center gap-2 font-medium text-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={selectedProductIds.includes(product.id)}
+                                onChange={() => handleToggleProduct(product.id)}
+                                className="w-4 h-4 text-blue-600 rounded"
+                              />
+                              {product.display_name}
+                            </label>
+                            <span className="text-xs text-gray-500">({items.length}個のアイテム)</span>
                           </div>
-                        ))}
-                      </div>
-                    )}
+
+                          {/* アイテム */}
+                          {expandedProduct.has(product.id) && items.length > 0 && (
+                            <div className="ml-6 mt-2 space-y-1 border-l-2 border-gray-200 pl-3">
+                              {items.map((item) => (
+                                <label
+                                  key={item.id}
+                                  className="flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 p-1 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedItemIds.includes(item.id)}
+                                    onChange={() => handleToggleItem(item.id)}
+                                    className="w-3.5 h-3.5 text-blue-600 rounded"
+                                  />
+                                  <span className="flex-1">{item.name}</span>
+                                  <span className="text-gray-600">¥{item.price.toLocaleString()}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
