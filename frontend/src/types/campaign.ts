@@ -11,6 +11,8 @@ export interface Campaign {
   is_active: boolean
   created_at: string
   updated_at: string
+  // 下書き管理用（オプショナル）
+  associations?: CampaignAssociations
 }
 
 // キャンペーン×撮影カテゴリ の関連
