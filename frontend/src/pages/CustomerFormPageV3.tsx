@@ -224,16 +224,23 @@ export default function CustomerFormPageV3() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory-500">
+    <div className="min-h-screen bg-gradient-to-b from-background-100 to-background-400">
       <Header />
 
       {/* Hero Section */}
-      <section className="relative py-8 md:py-12 bg-white">
+      <section className="relative py-12 md:py-16 bg-gradient-to-br from-brand-50 via-white to-secondary-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <div className="diamond-icon mx-auto mb-4"></div>
-          <h1 className="section-title text-gray-800 mb-3">料金シミュレーション</h1>
-          <div className="accent-line"></div>
-          <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
+          {/* アイコン */}
+          <div className="mx-auto mb-6 w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 shadow-brand-lg flex items-center justify-center animate-fade-in">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-brand-700 to-brand-500 bg-clip-text text-transparent mb-4 font-yugothic animate-slide-up">
+            料金シミュレーション
+          </h1>
+          <div className="w-24 h-1 mx-auto bg-gradient-to-r from-brand-400 to-secondary-400 rounded-full mb-6"></div>
+          <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-2xl mx-auto animate-slide-up">
             ご希望の撮影メニューをお選びください。
           </p>
         </div>
@@ -241,30 +248,39 @@ export default function CustomerFormPageV3() {
 
       {/* Campaign Section */}
       {campaigns.length > 0 && (
-        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
+        <section className="py-6 bg-gradient-to-r from-secondary-50 via-secondary-100 to-secondary-50 border-y border-secondary-200">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-              現在実施中のキャンペーン
-            </p>
-            <div className="space-y-2">
+            <div className="flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-secondary-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <p className="text-center text-sm font-bold text-secondary-800">
+                現在実施中のキャンペーン
+              </p>
+            </div>
+            <div className="space-y-3">
               {campaigns.map((campaign) => (
                 <div
                   key={campaign.id}
-                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
+                  className="flex items-center justify-between bg-white px-5 py-4 rounded-xl border-2 border-secondary-300 shadow-soft hover:shadow-medium transition-shadow duration-300"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🎉</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-secondary-400 to-secondary-600 shadow-soft">
+                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-800">
+                      <h3 className="text-sm font-bold text-neutral-800">
                         {campaign.name}
                       </h3>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-neutral-500 mt-0.5">
                         {campaign.start_date} 〜 {campaign.end_date}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-bold text-orange-600">
+                    <span className="text-lg font-bold text-secondary-600">
                       {campaign.discount_type === 'percentage'
                         ? `${campaign.discount_value}% OFF`
                         : `${formatPrice(campaign.discount_value)} 引き`}
@@ -278,34 +294,37 @@ export default function CustomerFormPageV3() {
       )}
 
       {/* Main Content Section */}
-      <section className="py-6 bg-white">
+      <section className="py-8 bg-transparent">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* 撮影カテゴリ選択 */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">
-              撮影カテゴリを選択
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl shadow-medium border border-brand-100 p-8 mb-8 animate-fade-in">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-brand-700 mb-2 font-yugothic">
+                撮影カテゴリを選択
+              </h2>
+              <div className="w-16 h-1 mx-auto bg-gradient-to-r from-brand-400 to-secondary-400 rounded-full"></div>
+            </div>
+            <div className="grid grid-cols-2 gap-5">
               {shootingCategories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedShootingCategoryId(category.id)}
-                  className={`relative overflow-hidden rounded-lg border-2 transition-all ${
+                  className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-300 transform hover:scale-105 ${
                     selectedShootingCategoryId === category.id
-                      ? 'border-blue-500 ring-2 ring-blue-200'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-brand-500 ring-4 ring-brand-200 shadow-brand-lg'
+                      : 'border-neutral-200 hover:border-brand-300 shadow-soft hover:shadow-medium'
                   }`}
                 >
                   {/* 画像部分 */}
-                  <div className="aspect-[4/3] bg-gray-100">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-neutral-100 to-neutral-200 overflow-hidden">
                     {category.image_url ? (
                       <img
                         src={category.image_url}
                         alt={category.display_name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-neutral-400">
                         <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
@@ -313,11 +332,23 @@ export default function CustomerFormPageV3() {
                     )}
                   </div>
                   {/* テキストラベル */}
-                  <div className="py-3 px-2 bg-white">
-                    <p className="text-sm font-medium text-gray-800 text-center">
+                  <div className="py-4 px-3 bg-white">
+                    <p className={`text-sm font-bold text-center transition-colors ${
+                      selectedShootingCategoryId === category.id
+                        ? 'text-brand-700'
+                        : 'text-neutral-800 group-hover:text-brand-600'
+                    }`}>
                       {category.display_name}
                     </p>
                   </div>
+                  {/* 選択インジケーター */}
+                  {selectedShootingCategoryId === category.id && (
+                    <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center shadow-brand">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -326,17 +357,25 @@ export default function CustomerFormPageV3() {
           {/* フォームコンテンツ */}
           <div ref={formContentRef}>
             {loading && (
-              <div className="text-center py-12">
-                <div className="text-gray-600">読み込み中...</div>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 mb-4 animate-pulse">
+                  <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div className="text-neutral-600 font-medium">読み込み中...</div>
               </div>
             )}
 
             {!loading && selectedShootingCategoryId && productCategories.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-              <p className="text-yellow-800">
-                この撮影カテゴリのフォームはまだ作成されていません。
+            <div className="bg-gradient-to-r from-secondary-50 to-secondary-100 border-2 border-secondary-200 rounded-xl p-8 text-center shadow-soft">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary-200 mb-4">
+                <svg className="w-8 h-8 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <p className="text-secondary-800 font-semibold mb-2">
+                この撮影カテゴリのフォームはまだ作成されていません
               </p>
-              <p className="text-sm text-yellow-600 mt-2">
+              <p className="text-sm text-secondary-600">
                 管理画面のフォームビルダーで先にフォームを作成してください。
               </p>
             </div>
@@ -415,33 +454,33 @@ export default function CustomerFormPageV3() {
 
       {/* Price Summary - Sticky Bottom */}
       {selectedItemIds.length > 0 && (
-        <div className="sticky bottom-0 bg-white border-t-2 border-blue-300 shadow-xl z-50">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="border-t-2 border-blue-400 pt-3 mb-4">
+        <div className="sticky bottom-0 bg-gradient-to-r from-white via-brand-50 to-white border-t-2 border-brand-200 shadow-large z-50 animate-slide-up">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div className="bg-gradient-to-r from-brand-50 to-secondary-50 rounded-xl p-4 mb-4 border border-brand-200">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-gray-800">合計</span>
+                <span className="text-lg font-bold text-brand-800">合計金額</span>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-brand-600 to-brand-500 bg-clip-text text-transparent">
                     {formatPrice(totalPrice)}
                   </div>
-                  <div className="text-xs text-gray-500">（税込）</div>
+                  <div className="text-xs text-neutral-500 mt-1">（税込）</div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleReset}
-                className="px-4 py-3 border-2 border-gray-400 text-gray-700 font-semibold rounded-md hover:bg-gray-50 transition-colors"
+                className="px-5 py-3.5 border-2 border-neutral-300 text-neutral-700 font-bold rounded-xl hover:bg-neutral-50 hover:border-neutral-400 transition-all duration-300 shadow-soft hover:shadow-medium transform hover:scale-105"
               >
                 やり直す
               </button>
-              <button className="px-4 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors">
+              <button className="px-5 py-3.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-bold rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all duration-300 shadow-brand hover:shadow-brand-lg transform hover:scale-105">
                 ご予約はこちら
               </button>
             </div>
 
-            <p className="text-xs text-center text-gray-500 mt-3">
+            <p className="text-xs text-center text-neutral-500 mt-4 leading-relaxed">
               ※撮影する家族の人数や衣装、キャンペーン適用などで金額が異なる場合がございます。
             </p>
           </div>
