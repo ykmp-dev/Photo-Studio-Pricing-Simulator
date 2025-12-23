@@ -59,6 +59,8 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
   const [formPrice, setFormPrice] = useState(0)
   const [formAutoSelect, setFormAutoSelect] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [showAdvancedShooting, setShowAdvancedShooting] = useState(false)
+  const [showAdvancedProduct, setShowAdvancedProduct] = useState(false)
 
   // ファイルinput参照
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -132,10 +134,14 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     e.preventDefault()
     const newId = -Math.floor(Math.random() * 1000000) // 負の値でテンポラリIDを作成
     const now = new Date().toISOString()
+
+    // キーが空の場合は自動生成
+    const generatedName = formName || `shooting_${draftShooting.length + 1}`
+
     const newCategory: ShootingCategory = {
       id: newId,
       shop_id: shopId,
-      name: formName,
+      name: generatedName,
       display_name: formDisplayName,
       description: formDescription || null,
       image_url: formImageUrl || null,
@@ -154,10 +160,14 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
 
     const newId = -Math.floor(Math.random() * 1000000)
     const now = new Date().toISOString()
+
+    // キーが空の場合は自動生成
+    const generatedName = formName || `category_${draftProduct.length + 1}`
+
     const newCategory: ProductCategory = {
       id: newId,
       shop_id: shopId,
-      name: formName,
+      name: generatedName,
       display_name: formDisplayName,
       description: formDescription || null,
       sort_order: draftProduct.length,
@@ -321,6 +331,8 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setEditingShootingId(null)
     setEditingProductId(null)
     setEditingItemId(null)
+    setShowAdvancedShooting(false)
+    setShowAdvancedProduct(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -332,6 +344,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDescription(category.description || '')
     setFormImageUrl(category.image_url || '')
     setEditingShootingId(category.id)
+    setShowAdvancedShooting(true) // 編集時は詳細設定を開く
   }
 
   const startEditProduct = (category: ProductCategory) => {
@@ -339,6 +352,7 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
     setFormDisplayName(category.display_name)
     setFormDescription(category.description || '')
     setEditingProductId(category.id)
+    setShowAdvancedProduct(true) // 編集時は詳細設定を開く
   }
 
   const startEditItem = (item: DraftItem) => {
@@ -590,19 +604,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             <form onSubmit={handleCreateShooting} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  キー（name） <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="shichigosan"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   表示名 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -613,6 +614,35 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   placeholder="七五三"
                   required
                 />
+              </div>
+
+              {/* 詳細設定（キー） */}
+              <div className="border-t border-gray-200 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedShooting(!showAdvancedShooting)}
+                  className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                >
+                  <span>{showAdvancedShooting ? '▼' : '▶'}</span>
+                  詳細設定
+                </button>
+                {showAdvancedShooting && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      キー（name）
+                    </label>
+                    <input
+                      type="text"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="shooting_1（空欄で自動生成）"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      空欄の場合は「shooting_1」形式で自動生成されます
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
@@ -785,35 +815,6 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
             <form onSubmit={handleCreateProduct} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  キー（name） <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-                    placeholder="hair"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextNumber = draftProduct.length + 1
-                      setFormName(`category_${nextNumber}`)
-                    }}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-                    title="自動生成"
-                  >
-                    自動生成
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  自動生成ボタンで category_1, category_2... の形式で生成されます
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   表示名 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -824,6 +825,35 @@ export default function CategoryManager({ shopId, onHasChanges }: CategoryManage
                   placeholder="ヘアセット"
                   required
                 />
+              </div>
+
+              {/* 詳細設定（キー） */}
+              <div className="border-t border-gray-200 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedProduct(!showAdvancedProduct)}
+                  className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                >
+                  <span>{showAdvancedProduct ? '▼' : '▶'}</span>
+                  詳細設定
+                </button>
+                {showAdvancedProduct && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      キー（name）
+                    </label>
+                    <input
+                      type="text"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="category_1（空欄で自動生成）"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      空欄の場合は「category_1」形式で自動生成されます
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
