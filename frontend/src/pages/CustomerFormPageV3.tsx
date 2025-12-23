@@ -8,6 +8,7 @@ import { calculateTotalPrice } from '../utils/formHelpers'
 import { formatPrice } from '../utils/priceCalculator'
 import type { ProductCategoryV3, FormValues } from '../types/formV3'
 import type { ShootingCategory, Item } from '../types/category'
+import type { Campaign } from '../types/campaign'
 import ProductCategorySection from '../components/customer/ProductCategorySection'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -24,6 +25,9 @@ export default function CustomerFormPageV3() {
 
   const [shootingCategories, setShootingCategories] = useState<ShootingCategory[]>([])
   const [selectedShootingCategoryId, setSelectedShootingCategoryId] = useState<number | null>(null)
+
+  // キャンペーン
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
 
   const [productCategories, setProductCategories] = useState<ProductCategoryV3[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
@@ -44,6 +48,7 @@ export default function CustomerFormPageV3() {
   // 撮影カテゴリ一覧を取得
   useEffect(() => {
     loadShootingCategories()
+    loadCampaigns()
   }, [shopId])
 
   // 撮影カテゴリ変更時、商品カテゴリとアイテムを取得
@@ -53,14 +58,22 @@ export default function CustomerFormPageV3() {
     }
   }, [selectedShootingCategoryId])
 
-  // フォームデータ読み込み後、自動スクロール
+  // フォームデータ読み込み後、自動スクロール（ヘッダー分のオフセットを考慮）
   useEffect(() => {
     if (!loading && selectedShootingCategoryId && productCategories.length > 0 && formContentRef.current) {
       // 少し遅延させてからスクロール（レンダリング完了を待つ）
       setTimeout(() => {
-        formContentRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
+        const element = formContentRef.current
+        if (!element) return
+
+        // ヘッダーの高さ（Header.tsxの高さ: 64px程度）を考慮
+        const headerOffset = 80
+        const elementPosition = element.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
         })
       }, 100)
     }
@@ -81,6 +94,27 @@ export default function CustomerFormPageV3() {
       setShootingCategories(data || [])
     } catch (err) {
       console.error('撮影カテゴリの読み込みエラー:', err)
+    }
+  }
+
+  const loadCampaigns = async () => {
+    if (!shopId) return
+
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('shop_id', parseInt(shopId))
+        .eq('is_active', true)
+        .lte('start_date', today)
+        .gte('end_date', today)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setCampaigns(data || [])
+    } catch (err) {
+      console.error('キャンペーンの読み込みエラー:', err)
     }
   }
 
@@ -204,6 +238,44 @@ export default function CustomerFormPageV3() {
           </p>
         </div>
       </section>
+
+      {/* Campaign Section */}
+      {campaigns.length > 0 && (
+        <section className="py-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-y border-orange-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm font-semibold text-gray-700 mb-3">
+              現在実施中のキャンペーン
+            </p>
+            <div className="space-y-2">
+              {campaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-orange-300 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🎉</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">
+                        {campaign.name}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {campaign.start_date} 〜 {campaign.end_date}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-orange-600">
+                      {campaign.discount_type === 'percentage'
+                        ? `${campaign.discount_value}% OFF`
+                        : `${formatPrice(campaign.discount_value)} 引き`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Main Content Section */}
       <section className="py-6 bg-white">
