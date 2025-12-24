@@ -33,10 +33,10 @@ export default function Header() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl md:text-2xl font-bold text-brand-700 font-mincho leading-tight tracking-wide">
-                横浜そごう写真館
+              <h1 className="text-xl md:text-2xl font-bold text-brand-700 font-mincho leading-tight tracking-widest">
+                そごう写真館
               </h1>
-              <p className="text-xs md:text-sm text-neutral-500 font-gothic tracking-wider">
+              <p className="text-xs md:text-sm text-neutral-600 font-mincho tracking-widest">
                 渡邉写真社
               </p>
             </div>
