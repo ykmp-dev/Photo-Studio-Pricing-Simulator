@@ -28,10 +28,14 @@ export default function Footer() {
                   />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-brand-700 font-mincho tracking-wide">
-                横浜そごう写真館{' '}
-                <span className="font-normal text-neutral-600 text-lg">渡邉写真社</span>
-              </h3>
+              <div className="flex flex-col">
+                <h3 className="text-2xl font-bold text-brand-700 font-mincho tracking-widest">
+                  そごう写真館
+                </h3>
+                <p className="text-sm text-neutral-600 font-mincho tracking-widest mt-1">
+                  渡邉写真社
+                </p>
+              </div>
             </div>
 
             {/* 店舗情報 */}
