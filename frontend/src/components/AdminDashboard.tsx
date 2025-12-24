@@ -41,9 +41,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background-100 to-background-300">
+    <div className="min-h-screen bg-background-200 bg-grid-pattern bg-grid">
       {/* Header */}
-      <header className="bg-gradient-to-r from-brand-600 via-brand-500 to-brand-600 shadow-brand-lg">
+      <header className="bg-brand-600 shadow-brand-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
@@ -54,10 +54,10 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white font-yugothic tracking-wide">
+                <h1 className="text-3xl font-bold text-white font-mincho tracking-widest">
                   管理画面
                 </h1>
-                <p className="text-sm text-brand-100 mt-0.5">横浜そごう写真館</p>
+                <p className="text-sm text-brand-100 mt-0.5 font-gothic">横浜そごう写真館</p>
               </div>
             </div>
             <div className="flex items-center gap-6">
@@ -65,11 +65,11 @@ export default function AdminDashboard() {
                 <svg className="w-5 h-5 text-brand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                <span className="text-sm text-white font-medium">{user?.email}</span>
+                <span className="text-sm text-white font-medium font-gothic">{user?.email}</span>
               </div>
               <button
                 onClick={handleSignOut}
-                className="bg-white text-brand-600 px-6 py-2.5 rounded-lg font-bold hover:bg-brand-50 transition-all duration-300 shadow-soft hover:shadow-medium transform hover:scale-105"
+                className="bg-white text-brand-600 px-6 py-2.5 rounded-lg font-bold hover:bg-brand-50 transition-all duration-300 shadow-soft hover:shadow-medium transform hover:scale-105 font-gothic"
               >
                 ログアウト
               </button>
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
           <nav className="flex space-x-1">
             <button
               onClick={() => handleTabChange('categories')}
-              className={`relative py-4 px-6 font-bold transition-all duration-300 ${
+              className={`relative py-4 px-6 font-bold transition-all duration-300 font-gothic ${
                 activeTab === 'categories'
                   ? 'text-brand-700'
                   : 'text-neutral-500 hover:text-brand-600'
@@ -100,12 +100,12 @@ export default function AdminDashboard() {
                 )}
               </span>
               {activeTab === 'categories' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-secondary-500 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-500 rounded-t-full" />
               )}
             </button>
             <button
               onClick={() => handleTabChange('campaigns')}
-              className={`relative py-4 px-6 font-bold transition-all duration-300 ${
+              className={`relative py-4 px-6 font-bold transition-all duration-300 font-gothic ${
                 activeTab === 'campaigns'
                   ? 'text-brand-700'
                   : 'text-neutral-500 hover:text-brand-600'
@@ -121,12 +121,12 @@ export default function AdminDashboard() {
                 )}
               </span>
               {activeTab === 'campaigns' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-secondary-500 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-500 rounded-t-full" />
               )}
             </button>
             <button
               onClick={() => handleTabChange('forms')}
-              className={`relative py-4 px-6 font-bold transition-all duration-300 ${
+              className={`relative py-4 px-6 font-bold transition-all duration-300 font-gothic ${
                 activeTab === 'forms'
                   ? 'text-brand-700'
                   : 'text-neutral-500 hover:text-brand-600'
@@ -142,12 +142,12 @@ export default function AdminDashboard() {
                 )}
               </span>
               {activeTab === 'forms' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-secondary-500 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-500 rounded-t-full" />
               )}
             </button>
             <button
               onClick={() => handleTabChange('csv')}
-              className={`relative py-4 px-6 font-bold transition-all duration-300 ${
+              className={`relative py-4 px-6 font-bold transition-all duration-300 font-gothic ${
                 activeTab === 'csv'
                   ? 'text-brand-700'
                   : 'text-neutral-500 hover:text-brand-600'
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
                 )}
               </span>
               {activeTab === 'csv' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-secondary-500 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-500 rounded-t-full" />
               )}
             </button>
           </nav>

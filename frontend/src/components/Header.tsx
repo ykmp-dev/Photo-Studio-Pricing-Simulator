@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 export default function Header() {
   return (
-    <header className="bg-gradient-to-r from-white via-brand-50 to-white shadow-soft sticky top-0 z-50 border-b border-brand-100">
+    <header className="bg-white shadow-soft sticky top-0 z-50 border-b border-brand-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-center items-center py-5">
           {/* ロゴ */}
@@ -11,7 +11,7 @@ export default function Header() {
             className="flex items-center group transition-transform duration-300 hover:scale-105"
           >
             {/* ロゴアイコン */}
-            <div className="mr-3 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 shadow-brand">
+            <div className="mr-3 flex items-center justify-center w-10 h-10 rounded-full bg-brand-500 shadow-brand">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -33,10 +33,10 @@ export default function Header() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-brand-700 to-brand-500 bg-clip-text text-transparent font-yugothic leading-tight">
+              <h1 className="text-xl md:text-2xl font-bold text-brand-700 font-mincho leading-tight tracking-wide">
                 横浜そごう写真館
               </h1>
-              <p className="text-xs md:text-sm text-neutral-500 font-yugothic">
+              <p className="text-xs md:text-sm text-neutral-500 font-gothic tracking-wider">
                 渡邉写真社
               </p>
             </div>
