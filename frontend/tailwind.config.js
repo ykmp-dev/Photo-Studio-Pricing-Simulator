@@ -7,64 +7,78 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 青系（参考サイトのメインカラー）
-        blue: {
-          50: '#e3f2fd',
-          100: '#bbdefb',
-          200: '#90caf9',
-          300: '#64b5f6',
-          400: '#42a5f5',
-          500: '#4a6fa5', // メインカラー
-          600: '#1e88e5',
-          700: '#1976d2',
-          800: '#1565c0',
-          900: '#0d47a1',
+        // 横浜そごう写真館のブランドカラー - 上品で洗練されたブルー
+        brand: {
+          50: '#EBF5FF',   // 非常に淡いブルー（背景用）
+          100: '#D6EBFF',  // 淡いブルー
+          200: '#A8D5FF',  // 柔らかいブルー
+          300: '#7AB8F5',  // 明るいブルー
+          400: '#5B8DBE',  // メインブルー（横浜そごう写真館）
+          500: '#4A7BA7',  // 標準ブルー
+          600: '#3D6690',  // 濃いブルー
+          700: '#2C5282',  // ダークブルー
+          800: '#1E3A5F',  // 深いブルー
+          900: '#0F1F3D',  // 最も濃いブルー
         },
-        // 明るいベージュ（背景用）
-        ivory: {
-          50: '#ffffff',
-          100: '#fafafa',
-          200: '#f8f8f8',
-          300: '#f7f7f7',
-          400: '#f6f6f6',
-          500: '#f5f5f0', // メインカラー（参考サイトに近い）
-          600: '#eeeeee',
-          700: '#e0e0e0',
-          800: '#bdbdbd',
-          900: '#9e9e9e',
-        },
-        // アクセントカラー（カード枠線用）
-        accent: {
-          blue: '#4a90e2',
-          pink: '#ff6b9d',
-          green: '#4caf50',
-        },
-        // プライマリカラー（blue のエイリアス）
+        // プライマリカラー（brandのエイリアス）
         primary: {
-          50: '#e3f2fd',
-          100: '#bbdefb',
-          200: '#90caf9',
-          300: '#64b5f6',
-          400: '#42a5f5',
-          500: '#4a6fa5',
-          600: '#1e88e5',
-          700: '#1976d2',
-          800: '#1565c0',
-          900: '#0d47a1',
+          50: '#EBF5FF',
+          100: '#D6EBFF',
+          200: '#A8D5FF',
+          300: '#7AB8F5',
+          400: '#5B8DBE',
+          500: '#4A7BA7',
+          600: '#3D6690',
+          700: '#2C5282',
+          800: '#1E3A5F',
+          900: '#0F1F3D',
         },
-        // ネイビー（見出し用）
-        navy: {
-          50: '#e8eaf6',
-          100: '#c5cae9',
-          200: '#9fa8da',
-          300: '#7986cb',
-          400: '#5c6bc0',
-          500: '#3f51b5',
-          600: '#283593',
-          700: '#1a237e',
-          800: '#0f1640',
-          900: '#0a0f29',
-        }
+        // セカンダリカラー - 温かみのあるゴールド
+        secondary: {
+          50: '#FFF9E6',
+          100: '#FFF3CC',
+          200: '#FFE699',
+          300: '#FFD966',
+          400: '#FFCC33',
+          500: '#F5B800',
+          600: '#CC9900',
+          700: '#997300',
+          800: '#664D00',
+          900: '#332600',
+        },
+        // アクセントカラー
+        accent: {
+          blue: '#5B8DBE',
+          gold: '#F5B800',
+          rose: '#E8B4B8',
+          sage: '#B8C5B8',
+        },
+        // ニュートラルカラー - より洗練されたグレー
+        neutral: {
+          50: '#FAFBFC',
+          100: '#F4F6F8',
+          200: '#E8ECEF',
+          300: '#D1D8DD',
+          400: '#A0AABA',
+          500: '#6B7280',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
+        },
+        // 背景色 - 柔らかいアイボリー
+        background: {
+          50: '#FFFFFF',
+          100: '#FDFDFB',
+          200: '#FAF9F7',
+          300: '#F7F6F3',
+          400: '#F4F3EF',
+          500: '#F0EFE9',  // メイン背景色
+          600: '#E8E7E0',
+          700: '#D9D8D0',
+          800: '#C5C4BC',
+          900: '#A8A79F',
+        },
       },
       fontFamily: {
         // 游ゴシック for Japanese
@@ -81,7 +95,46 @@ export default {
         'sm-japanese': '4px',
         'md-japanese': '8px',
         'lg-japanese': '12px',
-      }
+      },
+      boxShadow: {
+        'soft': '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'medium': '0 4px 16px rgba(0, 0, 0, 0.12)',
+        'large': '0 8px 32px rgba(0, 0, 0, 0.16)',
+        'brand': '0 4px 16px rgba(91, 141, 190, 0.15)',
+        'brand-lg': '0 8px 32px rgba(91, 141, 190, 0.2)',
+        'inner-soft': 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.5s ease-out',
+        'slide-down': 'slideDown 0.5s ease-out',
+        'scale-in': 'scaleIn 0.3s ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideDown: {
+          '0%': { transform: 'translateY(-20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        scaleIn: {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '100': '25rem',
+        '112': '28rem',
+        '128': '32rem',
+      },
     },
   },
   plugins: [],
