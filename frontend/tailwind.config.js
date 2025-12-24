@@ -81,15 +81,20 @@ export default {
         },
       },
       fontFamily: {
-        // 游ゴシック for Japanese
-        'yugothic': ['"Yu Gothic"', '"YuGothic"', '"游ゴシック"', 'sans-serif'],
-        // Serif for English
-        'serif': ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
-        // デフォルト
-        'sans': ['"Yu Gothic"', '"YuGothic"', '"游ゴシック"', 'system-ui', 'sans-serif'],
+        // 筑紫明朝風の明朝体（游明朝、Noto Serif JP）
+        'mincho': ['"Yu Mincho"', '"YuMincho"', '"游明朝"', '"Noto Serif JP"', 'Georgia', 'serif'],
+        // ゴシック体（サブテキスト用）
+        'gothic': ['"Yu Gothic"', '"YuGothic"', '"游ゴシック"', 'sans-serif'],
+        // デフォルト（明朝体メイン）
+        'sans': ['"Yu Mincho"', '"YuMincho"', '"游明朝"', '"Noto Serif JP"', 'serif'],
       },
       backgroundImage: {
-        'japanese-pattern': "url('/patterns/japanese-wave.svg')",
+        'dot-pattern': 'radial-gradient(circle, rgba(91, 141, 190, 0.04) 1px, transparent 1px)',
+        'grid-pattern': 'linear-gradient(rgba(91, 141, 190, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(91, 141, 190, 0.03) 1px, transparent 1px)',
+      },
+      backgroundSize: {
+        'dot': '20px 20px',
+        'grid': '40px 40px',
       },
       borderRadius: {
         'sm-japanese': '4px',

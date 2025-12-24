@@ -1,13 +1,13 @@
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-white to-brand-50 border-t border-brand-100">
+    <footer className="bg-white border-t border-brand-100">
       {/* 店舗情報・コピーライト */}
       <div className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-6">
             {/* ロゴ */}
             <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 shadow-brand mr-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-brand-500 shadow-brand mr-3">
                 <svg
                   className="w-7 h-7 text-white"
                   fill="none"
@@ -28,14 +28,14 @@ export default function Footer() {
                   />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-brand-700 font-yugothic">
+              <h3 className="text-2xl font-bold text-brand-700 font-mincho tracking-wide">
                 横浜そごう写真館{' '}
                 <span className="font-normal text-neutral-600 text-lg">渡邉写真社</span>
               </h3>
             </div>
 
             {/* 店舗情報 */}
-            <div className="space-y-3">
+            <div className="space-y-3 font-gothic">
               <div className="flex items-center justify-center text-neutral-600">
                 <svg
                   className="w-5 h-5 mr-2 text-brand-500"
@@ -98,11 +98,11 @@ export default function Footer() {
 
             {/* 区切り線 */}
             <div className="max-w-md mx-auto pt-6">
-              <div className="h-px bg-gradient-to-r from-transparent via-brand-300 to-transparent"></div>
+              <div className="h-px bg-brand-200"></div>
             </div>
 
             {/* コピーライト */}
-            <p className="text-xs text-neutral-500 pt-2">
+            <p className="text-xs text-neutral-500 pt-2 font-gothic">
               Copyright © WATANABE PHOTO Co., Ltd. All Rights Reserved.
             </p>
           </div>
