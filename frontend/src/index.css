@@ -119,12 +119,12 @@ body {
 
   /* セクション見出し */
   .section-title {
-    @apply text-3xl md:text-4xl font-bold mb-6 font-yugothic;
+    @apply text-3xl md:text-4xl font-bold mb-6 font-gothic;
     letter-spacing: 0.1em;
   }
 
   .section-subtitle {
-    @apply text-xl md:text-2xl font-semibold mb-4 font-yugothic;
+    @apply text-xl md:text-2xl font-semibold mb-4 font-gothic;
     letter-spacing: 0.08em;
   }
 
