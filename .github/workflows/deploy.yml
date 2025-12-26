@@ -37,8 +37,8 @@ jobs:
         run: |
           cd frontend
           npm run build:y_sogo
-          mkdir -p ../deploy/y_sogo
-          cp -r dist/* ../deploy/y_sogo/
+          mkdir -p ../deploy/y_sogo/simulation
+          cp -r dist/* ../deploy/y_sogo/simulation/
 
       - name: Build c_sogo (千葉そごう)
         env:
@@ -46,8 +46,8 @@ jobs:
         run: |
           cd frontend
           npm run build:c_sogo
-          mkdir -p ../deploy/c_sogo
-          cp -r dist/* ../deploy/c_sogo/
+          mkdir -p ../deploy/c_sogo/simulation
+          cp -r dist/* ../deploy/c_sogo/simulation/
 
       - name: Create root index
         run: |
