@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     base: env.VITE_BASE_PATH ||
-      (process.env.NODE_ENV === 'production' ? '/y_sogo/simulation/' : '/'),
+      (process.env.NODE_ENV === 'production' ? '/Photo-Studio-Pricing-Simulator/y_sogo/simulation/' : '/'),
     server: {
       port: 3000,
       proxy: {

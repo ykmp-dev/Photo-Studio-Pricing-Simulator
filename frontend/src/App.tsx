@@ -17,7 +17,8 @@ function RedirectHandler() {
       delete sessionStorage.redirect
       // baseパスを除いたパスを取得
       const url = new URL(redirect)
-      const path = url.pathname.replace('/y_sogo/simulation', '')
+      const basePath = import.meta.env.VITE_BASE_PATH || '/Photo-Studio-Pricing-Simulator/y_sogo/simulation/'
+      const path = url.pathname.replace(basePath.replace(/\/$/, ''), '')
       navigate(path + url.search + url.hash)
     }
   }, [navigate])
@@ -26,8 +27,9 @@ function RedirectHandler() {
 }
 
 function App() {
-  // エックスサーバー用のbaseパス設定（vite.config.tsと一致させる）
-  const basename = import.meta.env.PROD ? '/y_sogo/simulation/' : '/'
+  // 環境変数からbaseパスを取得（GitHub Pages用）
+  const basename = import.meta.env.VITE_BASE_PATH ||
+    (import.meta.env.PROD ? '/Photo-Studio-Pricing-Simulator/y_sogo/simulation/' : '/')
 
   return (
     <AuthProvider>
