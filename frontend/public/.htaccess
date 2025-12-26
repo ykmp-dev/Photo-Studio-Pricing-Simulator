@@ -3,12 +3,12 @@
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /y_sogo/simulator/
+  RewriteBase /y_sogo/simulation/
 
   # 実際のファイルやディレクトリが存在しない場合、index.htmlにリダイレクト
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /y_sogo/simulator/index.html [L]
+  RewriteRule . /y_sogo/simulation/index.html [L]
 </IfModule>
 
 # MIME type の設定

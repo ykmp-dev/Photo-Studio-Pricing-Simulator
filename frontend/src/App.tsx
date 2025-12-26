@@ -7,7 +7,7 @@ import FormBlockEditorPage from './pages/FormBlockEditorPage'
 import CustomerFormPageV3 from './pages/CustomerFormPageV3'
 import { AuthProvider } from './contexts/AuthContext'
 
-// GitHub PagesのSPAルーティング対応：404.htmlからのリダイレクトを処理
+// SPAルーティング対応：404.htmlからのリダイレクトを処理
 function RedirectHandler() {
   const navigate = useNavigate()
 
@@ -17,7 +17,7 @@ function RedirectHandler() {
       delete sessionStorage.redirect
       // baseパスを除いたパスを取得
       const url = new URL(redirect)
-      const path = url.pathname.replace('/Photo-Studio-Pricing-Simulator', '')
+      const path = url.pathname.replace('/y_sogo/simulation', '')
       navigate(path + url.search + url.hash)
     }
   }, [navigate])
@@ -26,8 +26,8 @@ function RedirectHandler() {
 }
 
 function App() {
-  // GitHub Pages用のbaseパス設定（vite.config.tsと一致させる）
-  const basename = import.meta.env.PROD ? '/Photo-Studio-Pricing-Simulator/' : '/'
+  // エックスサーバー用のbaseパス設定（vite.config.tsと一致させる）
+  const basename = import.meta.env.PROD ? '/y_sogo/simulation/' : '/'
 
   return (
     <AuthProvider>
