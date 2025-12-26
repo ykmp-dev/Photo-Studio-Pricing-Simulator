@@ -10,7 +10,8 @@ type Tab = 'categories' | 'campaigns' | 'forms' | 'csv'
 export default function AdminDashboard() {
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('categories')
-  const shopId = 1 // TODO: Get from user profile or context
+  // 環境変数から店舗IDを取得（各店舗のビルドで自動的に切り替わる）
+  const shopId = Number(import.meta.env.VITE_SHOP_ID) || 1
 
   // 各タブの変更状態を追跡
   const [hasChanges, setHasChanges] = useState<Record<Tab, boolean>>({
