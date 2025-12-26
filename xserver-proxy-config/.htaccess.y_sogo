@@ -1,0 +1,17 @@
+# 横浜そごう写真館用プロキシ設定
+# public_html/y_sogo/simulation/.htaccess に配置
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /y_sogo/simulation/
+
+  # GitHub Pagesへのプロキシ
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/y_sogo/simulation/$1 [P,L]
+</IfModule>
+
+# プロキシヘッダー設定
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>

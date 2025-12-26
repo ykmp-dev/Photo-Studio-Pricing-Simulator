@@ -31,17 +31,45 @@ jobs:
           cd frontend
           npm install
 
-      - name: Build
+      - name: Build y_sogo (横浜そごう)
         env:
           NODE_ENV: production
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_SHOP_ID: ${{ secrets.VITE_SHOP_ID }}
         run: |
           cd frontend
-          npm run build
+          npm run build:y_sogo
+          mkdir -p ../deploy/y_sogo
+          cp -r dist/* ../deploy/y_sogo/
+
+      - name: Build c_sogo (千葉そごう)
+        env:
+          NODE_ENV: production
+        run: |
+          cd frontend
+          npm run build:c_sogo
+          mkdir -p ../deploy/c_sogo
+          cp -r dist/* ../deploy/c_sogo/
+
+      - name: Create root index
+        run: |
+          cat > deploy/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ja">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>そごう写真館</title>
+          </head>
+          <body>
+            <h1>そごう写真館 料金シミュレーター</h1>
+            <ul>
+              <li><a href="/y_sogo/simulation/">横浜そごう写真館</a></li>
+              <li><a href="/c_sogo/simulation/">千葉そごう写真館</a></li>
+            </ul>
+          </body>
+          </html>
+          EOF
           # GitHub PagesでJekyllを無効化
-          touch dist/.nojekyll
+          touch deploy/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -49,7 +77,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: deploy
 
   deploy:
     environment:
