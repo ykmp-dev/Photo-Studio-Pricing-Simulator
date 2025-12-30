@@ -62,8 +62,8 @@ jobs:
           <body>
             <h1>そごう写真館 料金シミュレーター</h1>
             <ul>
-              <li><a href="/y_sogo/simulation/">横浜そごう写真館</a></li>
-              <li><a href="/c_sogo/simulation/">千葉そごう写真館</a></li>
+              <li><a href="/Photo-Studio-Pricing-Simulator/y_sogo/simulation/">横浜そごう写真館</a></li>
+              <li><a href="/Photo-Studio-Pricing-Simulator/c_sogo/simulation/">千葉そごう写真館</a></li>
             </ul>
           </body>
           </html>
