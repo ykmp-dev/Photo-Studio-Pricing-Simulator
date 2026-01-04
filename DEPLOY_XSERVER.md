@@ -1,170 +1,193 @@
 # エックスサーバーへのデプロイ手順
 
+## 📋 概要
+
+GitHub Pagesでホスティングしたアプリを、エックスサーバー経由でアクセスできるようにするプロキシ設定です。
+
+```
+ユーザー → エックスサーバー（プロキシ） → GitHub Pages（実体）
+
+watanabephoto.co.jp/y_sogo/simulation/
+  ↓ .htaccess プロキシ
+ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/y_sogo/simulation/
+```
+
 ## 📋 前提条件
 
 - エックスサーバーのアカウントがある
 - FTPアクセス情報がある
-- Supabaseのプロジェクト情報がある
+- GitHub Pagesへのデプロイが完了している
 
 ---
 
-## 🔧 準備
+## 🏪 対象店舗
 
-### 1. 環境変数を設定
-
-`frontend/.env.production` を編集して、実際の値に置き換えてください:
-
-```env
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_SHOP_ID=1
-VITE_BASE_PATH=/y_sogo/simulator
-```
-
-**取得方法:**
-1. Supabaseダッシュボード → Project Settings → API
-2. `Project URL` → `VITE_SUPABASE_URL`
-3. `anon public` → `VITE_SUPABASE_ANON_KEY`
+| 店舗 | shop_id | パス | 本番URL |
+|------|---------|------|---------|
+| 横浜そごう | 1 | `/y_sogo/simulation/` | `watanabephoto.co.jp/y_sogo/simulation/` |
+| 千葉そごう | 4 | `/c_sogo/simulation/` | `watanabephoto.co.jp/c_sogo/simulation/` |
 
 ---
 
-## 🏗️ ビルド
+## 🔧 セットアップ手順
 
-### ローカルでビルド
+### 1. エックスサーバーにディレクトリを作成
 
-```bash
-cd frontend
-npm run build:xserver
+FTPで接続し、以下のディレクトリ構造を作成:
+
+```
+public_html/
+├── y_sogo/
+│   └── simulation/
+└── c_sogo/
+    └── simulation/
 ```
 
-成功すると `dist/` フォルダが生成されます。
+### 2. .htaccess ファイルを配置
+
+#### 横浜そごう
+
+`xserver-proxy-config/.htaccess.y_sogo` の内容を
+`public_html/y_sogo/simulation/.htaccess` として配置
+
+```apache
+# 横浜そごう写真館用プロキシ設定
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /y_sogo/simulation/
+
+  # GitHub Pagesへのプロキシ
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/y_sogo/simulation/$1 [P,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>
+```
+
+#### 千葉そごう
+
+`xserver-proxy-config/.htaccess.c_sogo` の内容を
+`public_html/c_sogo/simulation/.htaccess` として配置
+
+```apache
+# 千葉そごう写真館用プロキシ設定
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /c_sogo/simulation/
+
+  # GitHub Pagesへのプロキシ
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/c_sogo/simulation/$1 [P,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>
+```
+
+### 3. GitHub Pagesが有効になっていることを確認
+
+- リポジトリ Settings → Pages
+- デプロイが成功していること
 
 ---
 
-## 📤 アップロード
+## ✅ 動作確認
 
-### FTPでアップロード
+### GitHub Pages直接アクセス（ソース確認）
+- https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/y_sogo/simulation/
+- https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/c_sogo/simulation/
 
-**アップロード先:**
-```
-/public_html/y_sogo/simulator/
-```
+### エックスサーバー経由アクセス（本番）
+- https://www.watanabephoto.co.jp/y_sogo/simulation/
+- https://www.watanabephoto.co.jp/c_sogo/simulation/
 
-**アップロードするファイル:**
-```
-dist/ の中身を全て
-├── index.html
-├── assets/
-│   ├── index-xxxxx.js
-│   ├── index-xxxxx.css
-│   └── ...
-└── .htaccess
-```
+### チェックリスト
 
-### FileZilla での手順例:
-
-1. FileZilla を起動
-2. ホスト: `ftp.watanabephoto.co.jp`（またはエックスサーバーのFTPホスト）
-3. ユーザー名: `your-ftp-username`
-4. パスワード: `your-ftp-password`
-5. ポート: `21`
-6. 接続
-7. リモートサイト: `/public_html/y_sogo/` に移動
-8. `simulator` フォルダを作成（なければ）
-9. `simulator` フォルダに移動
-10. ローカルの `dist/` フォルダの**中身を全て**ドラッグ&ドロップ
-
----
-
-## ✅ 確認
-
-アクセスして動作確認:
-
-```
-https://www.watanabephoto.co.jp/y_sogo/simulator/
-```
-
-### チェックリスト:
-
+#### 横浜そごう
+- [ ] https://www.watanabephoto.co.jp/y_sogo/simulation/ にアクセスできる
 - [ ] ページが表示される
-- [ ] ヘッダー・フッターが表示される
 - [ ] 撮影カテゴリが選択できる
 - [ ] フォームが表示される
 - [ ] 料金計算が正しく動作する
-- [ ] 予約ボタンが表示される
 
----
-
-## 🔄 更新方法
-
-コードを変更した後:
-
-1. ローカルでビルド:
-   ```bash
-   cd frontend
-   npm run build:xserver
-   ```
-
-2. FTPで上書きアップロード:
-   - `dist/` の中身を全て
-   - `/public_html/y_sogo/simulator/` に上書き
+#### 千葉そごう
+- [ ] https://www.watanabephoto.co.jp/c_sogo/simulation/ にアクセスできる
+- [ ] ページが表示される
+- [ ] 撮影カテゴリが選択できる
+- [ ] フォームが表示される
+- [ ] 料金計算が正しく動作する
 
 ---
 
 ## ⚠️ トラブルシューティング
 
-### ページが真っ白
+### 500 Internal Server Error
 
-**原因:** ベースパスの設定が間違っている
+**原因:** mod_proxy が無効
 
-**解決策:**
-1. `.env.production` の `VITE_BASE_PATH` を確認
-2. 再ビルド
-3. 再アップロード
+**解決策:** リダイレクト方式に変更
 
-### CSS・JSが読み込まれない
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(.*)$ https://ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/y_sogo/simulation/$1 [R=301,L]
+</IfModule>
+```
 
-**原因:** ファイルパスが間違っている
+※ この方式だとURLがGitHub PagesのURLに変わります
 
-**解決策:**
-1. `.htaccess` が正しくアップロードされているか確認
-2. ブラウザのキャッシュをクリア
+### 404 Not Found
 
-### Supabaseに接続できない
-
-**原因:** 環境変数が間違っている
+**原因:** GitHub Pagesのデプロイが完了していない、またはパスが間違っている
 
 **解決策:**
-1. `.env.production` のSupabase情報を確認
-2. Supabaseダッシュボードで設定を確認
-3. 再ビルド
+1. GitHub Actions のデプロイ状況を確認
+2. .htaccess のパスを確認
 
-### React Routerが動作しない（404エラー）
+### CORS エラー
 
-**原因:** `.htaccess` が正しく設定されていない
+**原因:** Access-Control-Allow-Origin が設定されていない
 
-**解決策:**
-1. `.htaccess` がアップロードされているか確認
-2. エックスサーバーで mod_rewrite が有効か確認
+**解決策:** .htaccess に以下を追加
+
+```apache
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>
+```
 
 ---
 
-## 📊 本番環境とGitHub Pagesの使い分け
+## 🔄 更新方法
 
-| 環境 | URL | 用途 | ビルドコマンド |
-|------|-----|------|---------------|
-| **エックスサーバー** | `watanabephoto.co.jp/y_sogo/simulator/` | 本番環境・リスティング広告 | `npm run build:xserver` |
-| **GitHub Pages** | `ykmp-dev.github.io/Photo-Studio-Pricing-Simulator/` | テスト環境・開発用 | `npm run build` |
+GitHub Pagesへの自動デプロイが設定されているため、`main` ブランチにマージすれば自動的に更新されます。
+
+1. コードを変更
+2. `claude/*` ブランチにプッシュ
+3. 自動マージ → GitHub Pages デプロイ
+4. エックスサーバー経由でも自動的に反映
 
 ---
 
-## 🎯 次のステップ
+## 📊 環境比較
 
-1. [x] ビルド設定
-2. [x] .htaccess作成
-3. [ ] `.env.production` に実際の値を設定
-4. [ ] ビルド実行
-5. [ ] FTPアップロード
-6. [ ] 動作確認
-7. [ ] Google Analytics設定（オプション）
-8. [ ] リスティング広告設定（オプション）
+| 項目 | GitHub Pages | エックスサーバー |
+|------|--------------|-----------------|
+| URL | `ykmp-dev.github.io/...` | `watanabephoto.co.jp/...` |
+| 用途 | テスト・開発 | 本番・リスティング広告 |
+| 更新方法 | 自動デプロイ | プロキシ（自動反映） |
+| SSL | 自動 | エックスサーバー設定 |
+
+---
+
+## 📁 関連ファイル
+
+- `xserver-proxy-config/.htaccess.y_sogo` - 横浜そごう用.htaccess
+- `xserver-proxy-config/.htaccess.c_sogo` - 千葉そごう用.htaccess
+- `xserver-proxy-config/README.md` - 詳細な設定ガイド
+- `.github/workflows/deploy.yml` - GitHub Pages自動デプロイ設定
