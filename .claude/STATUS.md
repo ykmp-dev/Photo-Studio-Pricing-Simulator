@@ -1,6 +1,6 @@
 # プロジェクト現状
 
-**最終更新**: 2025-12-18 by cKRID
+**最終更新**: 2026-01-04 by LJBAt
 
 ---
 
@@ -14,6 +14,11 @@
 - ✅ **errorReporter自動ログ収集完了** - 手動確認不要
 - ✅ **Choice ブロックUI実装完了** - 多択選択対応
 - ✅ **包括的なドキュメント整備完了** - 診断ツール、トラブルシューティングガイド
+- ✅ **マルチテナント対応** - 横浜そごう(shop_id=1)・千葉そごう(shop_id=4)
+- ✅ **GitHub Pages自動デプロイ** - y_sogo/simulation, c_sogo/simulation
+
+### 進行中
+- 🔄 **エックスサーバープロキシ設定** - watanabephoto.co.jp への適用待ち
 
 ### 保留中
 なし
@@ -45,9 +50,20 @@
 
 ## 🎯 次にやるべきこと
 
-1. **ユーザーからの新しいフィードバックに対応**
-2. Choice管理UI実装（必要になったら）
-3. E2Eテストの実装（scripts/setup-e2e-tests.sh 参照）
+### 優先度高
+1. **エックスサーバーへの.htaccess適用** - [DEPLOY_XSERVER.md](../DEPLOY_XSERVER.md) 参照
+   - `public_html/y_sogo/simulation/.htaccess` に配置
+   - `public_html/c_sogo/simulation/.htaccess` に配置
+   - mod_proxy有効確認（無効なら301リダイレクト方式に変更）
+
+### 優先度中
+2. **テストの修正** - formBuilderService.test.ts のSupabaseモック修正（7件失敗中）
+3. **ユーザーからの新しいフィードバックに対応**
+
+### 優先度低
+4. Choice管理UI実装（必要になったら）
+5. E2Eテストの実装（scripts/setup-e2e-tests.sh 参照）
+6. チャンクサイズ最適化（669KB → 500KB未満）
 
 ---
 
